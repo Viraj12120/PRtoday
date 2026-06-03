@@ -1,5 +1,5 @@
 """
-PR Sentinel - AI Review Engine.
+PR Today - AI Review Engine.
 
 Integrates with multi-provider models using LiteLLM to generate change summaries,
 predict failure scenarios, and suggest test improvements.
@@ -11,9 +11,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 import litellm
-from pr_sentinel.auth import get_token
+from pr_today.auth import get_token
 
-logger = logging.getLogger("pr_sentinel.ai")
+logger = logging.getLogger("pr_today.ai")
 
 
 @dataclass

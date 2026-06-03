@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Dict, Optional
 
-CONFIG_DIR = Path.home() / ".pr_sentinel"
+CONFIG_DIR = Path.home() / ".pr_today"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 def init_config_dir():

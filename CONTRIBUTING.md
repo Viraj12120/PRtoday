@@ -1,4 +1,4 @@
-# Contributing to PR Sentinel
+# Contributing to PR Today
 
 First off, thanks for taking the time to contribute!
 
@@ -6,12 +6,12 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the PR Sentinel Code of Conduct. By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by the PR Today Code of Conduct. By participating, you are expected to uphold this code.
 
 ## Development Setup
 
 1. **Prerequisites**: Python 3.10+ and Poetry.
-2. **Clone the repo**: `git clone https://github.com/your-org/pr-sentinel.git`
+2. **Clone the repo**: `git clone https://github.com/your-org/pr-today.git`
 3. **Install dependencies**: `poetry install`
 4. **Run tests**: `poetry run pytest`
 5. **Format code**: `poetry run black .`

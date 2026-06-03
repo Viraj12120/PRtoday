@@ -2,9 +2,9 @@ import pytest
 from unittest import mock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from pr_sentinel.db import Base, save_analysis, get_history
-from pr_sentinel.risk.scorer import RiskReport, RiskLevel
-from pr_sentinel.ai import AiReviewReport
+from pr_today.db import Base, save_analysis, get_history
+from pr_today.risk.scorer import RiskReport, RiskLevel
+from pr_today.ai import AiReviewReport
 
 
 @pytest.fixture(autouse=True)
@@ -14,8 +14,8 @@ def setup_in_memory_db():
     Base.metadata.create_all(bind=test_engine)
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
-    with mock.patch("pr_sentinel.db.engine", test_engine), \
-         mock.patch("pr_sentinel.db.SessionLocal", TestSessionLocal):
+    with mock.patch("pr_today.db.engine", test_engine), \
+         mock.patch("pr_today.db.SessionLocal", TestSessionLocal):
         yield
 
 

@@ -3,8 +3,8 @@ from typer.testing import CliRunner
 from unittest import mock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from pr_sentinel.cli import app
-from pr_sentinel.db import Base
+from pr_today.cli import app
+from pr_today.db import Base
 
 runner = CliRunner()
 
@@ -16,15 +16,15 @@ def setup_test_db():
     Base.metadata.create_all(bind=test_engine)
     TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
-    with mock.patch("pr_sentinel.db.engine", test_engine), \
-         mock.patch("pr_sentinel.db.SessionLocal", TestSessionLocal):
+    with mock.patch("pr_today.db.engine", test_engine), \
+         mock.patch("pr_today.db.SessionLocal", TestSessionLocal):
         yield
 
 
-@mock.patch("pr_sentinel.github.GithubClient.get_pr_files")
-@mock.patch("pr_sentinel.github.GithubClient.get_pull_request")
+@mock.patch("pr_today.github.GithubClient.get_pr_files")
+@mock.patch("pr_today.github.GithubClient.get_pull_request")
 @mock.patch("litellm.completion")
-@mock.patch("pr_sentinel.github.get_github_token", return_value="fake_token")
+@mock.patch("pr_today.github.get_github_token", return_value="fake_token")
 def test_analyze_e2e_flow(mock_get_token, mock_completion, mock_get_pr, mock_get_files):
     # Mock GitHub Client responses
     mock_pr = mock.Mock()

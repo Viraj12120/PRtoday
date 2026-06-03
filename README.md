@@ -1,8 +1,8 @@
-# PR SENTINEL
+# PR TODAY
 
 > Predict production risk before merge.
 
-PR Sentinel is a terminal-first, developer-centric CLI tool that automatically analyzes Pull Requests and predicts production risk before merge. It acts as an advanced, AI-assisted review engine that gives you a deterministic risk score and blast radius report natively in your terminal.
+PR Today is a terminal-first, developer-centric CLI tool that automatically analyzes Pull Requests and predicts production risk before merge. It acts as an advanced, AI-assisted review engine that gives you a deterministic risk score and blast radius report natively in your terminal.
 
 ## Features
 
@@ -17,7 +17,7 @@ PR Sentinel is a terminal-first, developer-centric CLI tool that automatically a
 
 ![Architecture](docs/architecture.md)
 
-PR Sentinel is built as a pure Python CLI application.
+PR Today is built as a pure Python CLI application.
 - **Language**: Python 3.10+
 - **CLI Framework**: Typer
 - **Terminal UI**: Rich
@@ -31,8 +31,8 @@ You will need Python 3.10+ installed.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/pr-sentinel.git
-cd pr-sentinel
+git clone https://github.com/your-org/pr-today.git
+cd pr-today
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -45,7 +45,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Verify installation
-python -m pr_sentinel.cli --help
+python -m pr_today.cli --help
 ```
 
 ## Environment Variables
@@ -75,13 +75,13 @@ AI_MODEL=openai/gpt-4o-mini
 
 ```bash
 # Analyze a specific PR
-python -m pr_sentinel.cli analyze --repo org/repo-name --pr 123
+python -m pr_today.cli analyze --repo org/repo-name --pr 123
 
 # View analysis history
-python -m pr_sentinel.cli history
+python -m pr_today.cli history
 
 # Authenticate / Setup
-python -m pr_sentinel.cli auth
+python -m pr_today.cli auth
 ```
 
 ## Running Tests
@@ -93,7 +93,7 @@ We use `pytest` for end-to-end and unit testing.
 pytest
 
 # Run tests with coverage
-pytest --cov=pr_sentinel
+pytest --cov=pr_today
 ```
 
 ## Roadmap

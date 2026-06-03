@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-We need to build a highly aesthetic, minimal, dense, and terminal-first Developer CLI for PR Sentinel. The user specifically requested a design that mimics terminal dashboards like `k9s` or `htop` (with Panels, Borders, specific colors, and JetBrains Mono).
+We need to build a highly aesthetic, minimal, dense, and terminal-first Developer CLI for PR Today. The user specifically requested a design that mimics terminal dashboards like `k9s` or `htop` (with Panels, Borders, specific colors, and JetBrains Mono).
 Initially, we considered Node.js with `commander`, `chalk`, and `cli-table3`. 
 
 ## Decision

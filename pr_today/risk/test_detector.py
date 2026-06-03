@@ -1,5 +1,5 @@
 """
-PR Sentinel - Missing Test Detection Module.
+PR Today - Missing Test Detection Module.
 
 Analyzes changed source files against existing test files in the PR
 to detect potentially missing unit or integration tests.

@@ -1,5 +1,5 @@
 """
-PR Sentinel Risk Engine - Deterministic Scoring Module.
+PR Today Risk Engine - Deterministic Scoring Module.
 
 Calculates a risk score (0-100) based on weighted analysis of PR file changes.
 AI must EXPLAIN risk, not CALCULATE risk. This module is the single source of truth.

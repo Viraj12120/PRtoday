@@ -1,5 +1,5 @@
 """Tests for the deterministic risk scorer."""
-from pr_sentinel.risk.scorer import (
+from pr_today.risk.scorer import (
     calculate_risk, RiskLevel, _score_file_volume,
     _score_critical_paths, _score_critical_files,
     _classify_risk_level,

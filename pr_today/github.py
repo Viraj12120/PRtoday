@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any
 from github import Github, Auth
 from github.PullRequest import PullRequest
-from pr_sentinel.auth import get_github_token
+from pr_today.auth import get_github_token
 
 class GithubClientError(Exception):
     pass
@@ -10,7 +10,7 @@ class GithubClient:
     def __init__(self, token: Optional[str] = None):
         auth_token = token or get_github_token()
         if not auth_token:
-            raise GithubClientError("GitHub token not found. Please run 'pr-sentinel auth' or set GITHUB_PAT.")
+            raise GithubClientError("GitHub token not found. Please run 'pr-today auth' or set GITHUB_PAT.")
         
         self.auth = Auth.Token(auth_token)
         self.client = Github(auth=self.auth)

@@ -1,1 +1,1 @@
-# pr_sentinel package
+# pr_today package

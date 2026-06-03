@@ -1,18 +1,18 @@
 import pytest
 from unittest import mock
 import os
-from pr_sentinel.ai import AiClient, AiReviewReport
+from pr_today.ai import AiClient, AiReviewReport
 
 
 def test_ai_client_no_token_fallback():
     # Clear tokens from environment for isolated test
-    with mock.patch.dict(os.environ, {}, clear=True), mock.patch("pr_sentinel.ai.get_token", return_value=None):
+    with mock.patch.dict(os.environ, {}, clear=True), mock.patch("pr_today.ai.get_token", return_value=None):
         client = AiClient(token=None)
         assert not client._has_key()
 
         files = [
             {"filename": "db/migrations/001_init.sql", "additions": 10, "deletions": 0},
-            {"filename": "pr_sentinel/auth.py", "additions": 5, "deletions": 2}
+            {"filename": "pr_today/auth.py", "additions": 5, "deletions": 2}
         ]
         report = client.generate_review(files)
         

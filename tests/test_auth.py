@@ -1,9 +1,9 @@
 import os
 import json
 from unittest import mock
-from pr_sentinel.auth import get_token, set_token, load_config, get_github_token
+from pr_today.auth import get_token, set_token, load_config, get_github_token
 
-@mock.patch('pr_sentinel.auth.CONFIG_FILE')
+@mock.patch('pr_today.auth.CONFIG_FILE')
 def test_set_and_load_token(mock_config_file, tmp_path):
     # Use a temporary file for config
     test_config = tmp_path / "config.json"
@@ -11,7 +11,7 @@ def test_set_and_load_token(mock_config_file, tmp_path):
     mock_config_file.open = test_config.open
     
     # Mock json reading/writing
-    with mock.patch('pr_sentinel.auth.open', mock.mock_open(read_data="{}")) as m:
+    with mock.patch('pr_today.auth.open', mock.mock_open(read_data="{}")) as m:
         set_token("github", "fake_token_123")
         m.assert_called_with(mock_config_file, "w")
 

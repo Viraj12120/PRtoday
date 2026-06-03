@@ -5,12 +5,12 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
-from pr_sentinel.auth import set_token, get_github_token
-from pr_sentinel.github import GithubClient, GithubClientError
-from pr_sentinel.risk import calculate_risk, analyze_blast_radius, detect_missing_tests, RiskLevel
-from pr_sentinel.ai import AiClient
+from pr_today.auth import set_token, get_github_token
+from pr_today.github import GithubClient, GithubClientError
+from pr_today.risk import calculate_risk, analyze_blast_radius, detect_missing_tests, RiskLevel
+from pr_today.ai import AiClient
 
-app = typer.Typer(help="PR Sentinel - Predict production risk before merge.")
+app = typer.Typer(help="PR Today - Predict production risk before merge.")
 console = Console()
 
 def _can_encode(char: str) -> bool:
@@ -49,7 +49,7 @@ def _risk_color(level: RiskLevel) -> str:
 @app.command()
 def auth():
     """Authenticate with GitHub and AI Providers."""
-    console.print(Panel.fit("PR Sentinel Authentication", style="bold blue"))
+    console.print(Panel.fit("PR Today Authentication", style="bold blue"))
 
     gh_token = Prompt.ask("Enter GitHub Personal Access Token", password=True)
     if gh_token:
@@ -86,7 +86,7 @@ def analyze(repo: str = typer.Option(..., help="Repository name in format org/re
 
         # --- Save to local SQLite database ---
         try:
-            from pr_sentinel.db import save_analysis
+            from pr_today.db import save_analysis
             save_analysis(repo, pr, pr_data.title, risk_report, ai_report)
         except Exception as db_err:
             console.print(f"[dim yellow]{SYM_WARN} Could not save analysis to history: {str(db_err)}[/dim yellow]")
@@ -96,7 +96,7 @@ def analyze(repo: str = typer.Option(..., help="Repository name in format org/re
 
         # 1. Header Panel
         console.print(Panel(
-            f"[bold {COLOR_TEXT}]PR SENTINEL[/bold {COLOR_TEXT}]",
+            f"[bold {COLOR_TEXT}]PR TODAY[/bold {COLOR_TEXT}]",
             border_style=COLOR_BORDER,
         ))
 
@@ -211,7 +211,7 @@ def analyze(repo: str = typer.Option(..., help="Repository name in format org/re
 def history():
     """View analysis history."""
     try:
-        from pr_sentinel.db import get_history
+        from pr_today.db import get_history
         records = get_history()
 
         if not records:

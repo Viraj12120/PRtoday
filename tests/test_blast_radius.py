@@ -1,5 +1,5 @@
 """Tests for blast radius detection."""
-from pr_sentinel.risk.blast_radius import analyze_blast_radius
+from pr_today.risk.blast_radius import analyze_blast_radius
 
 
 def _make_file(filename: str) -> dict:

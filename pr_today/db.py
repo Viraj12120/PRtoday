@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import List, Optional
 from sqlalchemy import create_engine, String, Text, DateTime, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
-from pr_sentinel.risk.scorer import RiskReport
-from pr_sentinel.ai import AiReviewReport
+from pr_today.risk.scorer import RiskReport
+from pr_today.ai import AiReviewReport
 
-CONFIG_DIR = Path.home() / ".pr_sentinel"
+CONFIG_DIR = Path.home() / ".pr_today"
 DB_FILE = CONFIG_DIR / "history.db"
 
 # Ensure config directory exists

@@ -1,5 +1,5 @@
 """
-PR Sentinel - Blast Radius Detection Module.
+PR Today - Blast Radius Detection Module.
 
 Determines which modules, services, and shared libraries are impacted by a PR.
 """

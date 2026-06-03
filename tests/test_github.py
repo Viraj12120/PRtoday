@@ -1,16 +1,16 @@
 import pytest
 from unittest import mock
-from pr_sentinel.github import GithubClient, GithubClientError
+from pr_today.github import GithubClient, GithubClientError
 
-@mock.patch('pr_sentinel.github.get_github_token')
+@mock.patch('pr_today.github.get_github_token')
 def test_github_client_no_token(mock_get_token):
     mock_get_token.return_value = None
     with pytest.raises(GithubClientError) as exc:
         GithubClient()
     assert "GitHub token not found" in str(exc.value)
 
-@mock.patch('pr_sentinel.github.Github')
-@mock.patch('pr_sentinel.github.get_github_token')
+@mock.patch('pr_today.github.Github')
+@mock.patch('pr_today.github.get_github_token')
 def test_get_pull_request(mock_get_token, mock_github_class):
     mock_get_token.return_value = "fake_token"
     

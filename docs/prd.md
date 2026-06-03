@@ -1,4 +1,4 @@
-# PR Sentinel - Product Requirements Document (PRD)
+# PR Today - Product Requirements Document (PRD)
 
 ## 1. Product Vision
 Software teams merge risky Pull Requests every day. Existing tools show lines changed but fail to answer:
@@ -8,7 +8,7 @@ Software teams merge risky Pull Requests every day. Existing tools show lines ch
 - Which reviewers should focus where?
 - Are tests missing?
 
-**PR Sentinel** solves this by predicting production risk before merge via a dense, terminal-first developer tool.
+**PR Today** solves this by predicting production risk before merge via a dense, terminal-first developer tool.
 
 ## 2. Target Users
 - Software Engineers

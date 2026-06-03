@@ -1,5 +1,5 @@
 """Tests for missing test detection."""
-from pr_sentinel.risk.test_detector import detect_missing_tests, _is_test_file, _is_source_file
+from pr_today.risk.test_detector import detect_missing_tests, _is_test_file, _is_source_file
 
 
 def _make_file(filename: str) -> dict:

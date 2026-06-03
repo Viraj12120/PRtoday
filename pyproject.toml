@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "pr-sentinel"
+name = "pr-today"
 version = "0.1.0"
 description = "Predict production risk before merge."
-authors = ["PR Sentinel Team"]
+authors = ["PR Today Team"]
 readme = "README.md"
-packages = [{include = "pr_sentinel"}]
+packages = [{include = "pr_today"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -27,7 +27,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-pr-sentinel = "pr_sentinel.cli:app"
+pr-today = "pr_today.cli:app"
 
 [tool.pyright]
 venvPath = "."
