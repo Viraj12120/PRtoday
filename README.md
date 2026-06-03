@@ -285,57 +285,8 @@ pytest --cov=pr_today
 
 Here is an example of the terminal dashboard rendered when analyzing a PR:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ PR TODAY                                                                                                       │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-┌───────────────────────────────── PR Information ─────────────────────────────────┐ ┌────────── Risk Score ──────────┐
-│ Repository      refinedev/refine                                                 │ │                                │
-│ PR              #7440 - feat(core): add updateIdentity method to auth provider   │ │         43/100 [MEDIUM]        │
-│ Files Changed   10                                                               │ │                                │
-│ Lines           +927 / -1                                                        │ │                                │
-└──────────────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────┘
-┌────────────────────────────────── Risk Factors ──────────────────────────────────┐ ┌────────── Blast Radius ─────────┐
-│ [+] Moderate Change Set                                                          │ │ auth-provider-update-identity/ │
-│     10 files changed                                                             │ │   core/*                       │
-│ [+] Large Diff                                                                   │ │   documentation/*              │
-│     928 lines changed                                                            │ │                                │
-│ [+] Critical Path Modified: authentication/                                      │ │ Shared Libraries:              │
-│     Changes detected in 'authentication/' directory                              │ │   ⚠️ definitions/helpers        │
-│ [+] Critical Path Modified: auth/                                                │ │   ⚠️ packages/core             │
-│     Changes detected in 'auth/' directory                                        │ │                                │
-│                                                                                  │ │ Cross-Cutting Concerns:        │
-│                                                                                  │ │   ⚠️ Authentication            │
-└──────────────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────┘
-┌────────────────────────────────── Test Coverage ─────────────────────────────────┐ ┌───── AI Review & Predictions ──┐
-│ Missing Unit Tests:                                                              │ │ Summary:                       │
-│   [-] packages/core/src/contexts/auth/types.ts                                   │ │ This PR introduces a new       │
-│                                                                                  │ │ `updateIdentity` method to     │
-│ Test Coverage: 80%                                                               │ │ the `AuthProvider` interface   │
-│                                                                                  │ │ and a corresponding            │
-│                                                                                  │ │ `useUpdateIdentity` hook...    │
-└──────────────────────────────────────────────────────────────────────────────────┘ └────────────────────────────────┘
-```
-
-### Detailed AI Review & Predictions for the above PR:
-
-* **Summary:**
-  This PR introduces a new `updateIdentity` method to the `AuthProvider` interface and a corresponding `useUpdateIdentity` hook, allowing applications to update the current user's identity (e.g., username, email) with built-in handling for redirects and notifications.
-
-* **Potential Failure Scenarios:**
-  * ⚠️ If an `authProvider` implements `updateIdentity` incorrectly (e.g., fails to return `success: true` on success, or returns malformed `AuthActionResponse`), it could lead to silent failures, incorrect redirects, or misleading user notifications.
-  * ⚠️ Improper backend implementation or misconfiguration of the `updateIdentity` method in the `authProvider` could introduce security vulnerabilities, allowing unauthorized identity changes or exposing sensitive user data if not properly validated and secured.
-  * ⚠️ Existing applications that upgrade might encounter issues if their custom `authProvider` is not updated to gracefully handle the optional `updateIdentity` method, potentially leading to runtime errors if the hook is used without the method being defined.
-
-* **Reviewer Focus Areas:**
-  * ☉ `packages/core/src/contexts/auth/index.tsx` and `packages/core/src/contexts/auth/types.ts`: Verify that the `updateIdentity` method is correctly added as an optional property to the `AuthProvider` interface and that its type signature is consistent with other auth actions.
-  * ☉ `packages/core/src/hooks/auth/useUpdateIdentity/index.ts`: Scrutinize the implementation of the `useUpdateIdentity` hook, ensuring it correctly calls the `authProvider`'s `updateIdentity` method, handles loading/error states, and processes `AuthActionResponse` (especially `redirectTo` and `notifications`) as expected.
-  * ☉ `documentation/docs/authentication/auth-provider/index.md` and `documentation/docs/authentication/hooks/use-update-identity/index.md`: Ensure the new method and hook are thoroughly documented with clear examples, expected return types, and explanations of error handling and redirection behavior.
-
-* **Suggested Tests:**
-  * ✓ Create an integration test that uses `useUpdateIdentity` with a mock `authProvider` implementation. Test successful updates (with and without `redirectTo`, with and without `successNotification`), failed updates (with and without `error` object), and verify correct UI feedback (notifications, redirects) is triggered.
-  * ✓ Add edge case tests for the `AuthActionResponse` returned by `updateIdentity`. Specifically, test scenarios where `success` is `false` but no `error` object is provided (should show generic error), and ensure `redirectTo` and `successNotification` are correctly processed when present.
-  * ✓ Implement a test case for an `authProvider` that *does not* implement the `updateIdentity` method. Verify that calling `useUpdateIdentity` in such a scenario either gracefully handles the missing method (e.g., returns an error or a no-op) without crashing the application.
+![Terminal Dashboard Top](docs/images/output1.png)
+![Terminal Dashboard Bottom](docs/images/output.png)
 
 ## Contributing
 
