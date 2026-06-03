@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables (contains secrets)
+.env
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+debug_response.txt
+
+# Local SQLite databases or history files
+*.db
+
+# OS-specific files
+.DS_Store
+Thumbs.db
