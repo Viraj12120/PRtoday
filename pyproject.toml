@@ -10,17 +10,19 @@ packages = [{include = "pr_today"}]
 python = "^3.10"
 typer = ">=0.12.0"
 rich = "^13.0.0"
-httpx = "^0.27.0"
-sqlalchemy = "^2.0.0"
-huggingface-hub = "^0.23.0"
-litellm = "^1.0.0"
-PyGithub = "^2.3.0"
+pygithub = ">=2.3.0"
+httpx = ">=0.27.0"
+sqlalchemy = ">=2.0.0"
+aiosqlite = ">=0.20.0"
+litellm = ">=1.0.0"
+pydantic-settings = ">=2.0.0"
+python-dotenv = ">=1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
 black = "^24.0.0"
-flake8 = "^7.0.0"
-mypy = "^1.10.0"
+ruff = "^0.4.0"
+pytest-cov = "^5.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -29,6 +31,33 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 pr-today = "pr_today.cli:app"
 
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
+[project]
+name = "pr-today"
+version = "0.1.0"
+description = "Predict production risk before merge."
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.12.0",
+    "rich>=13.0.0",
+    "pygithub>=2.3.0",
+    "httpx>=0.27.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "litellm>=1.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0"
+]
+
+[project.scripts]
+pr-today = "pr_today.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+# Enable basic Pyflakes and Pycodestyle rules
+lint.select = ["E", "F", "W", "I"]
