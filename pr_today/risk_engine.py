@@ -230,7 +230,9 @@ class RiskEngine:
         """Check if file is a test file."""
         path = Path(filename)
         return (
-            "test" in path.name.lower()
+            path.name.lower().startswith("test_")
+            or path.name.lower().endswith("_test")
+            or path.suffix == ".py" and path.name.lower().startswith("test")
             or "tests" in path.parts
             or "test" in path.parts
         )

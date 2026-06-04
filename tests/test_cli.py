@@ -41,7 +41,7 @@ def test_cli_analyze_invokes_orchestrator(mock_analysis_result):
     with patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run, \
          patch("pr_today.cli.Dashboard.render") as mock_render, \
          patch("pr_today.cli.init_db", new_callable=AsyncMock) as mock_init_db, \
-         patch("github.Github") as mock_github:
+         patch("pr_today.cli.Github") as mock_github:
          
         mock_run.return_value = mock_analysis_result
         mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = "test_user"
@@ -59,7 +59,7 @@ def test_cli_analyze_no_ai_flag(mock_analysis_result):
     with patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run, \
          patch("pr_today.cli.Dashboard.render") as mock_render, \
          patch("pr_today.cli.init_db", new_callable=AsyncMock) as mock_init_db, \
-         patch("github.Github") as mock_github:
+         patch("pr_today.cli.Github") as mock_github:
          
         mock_run.return_value = mock_analysis_result
         mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = "test_user"
@@ -72,7 +72,7 @@ def test_cli_analyze_no_ai_flag(mock_analysis_result):
 
 def test_cli_auth_success():
     """Verify auth command prints success message when GitHub token is valid."""
-    with patch("github.Github") as mock_github:
+    with patch("pr_today.cli.Github") as mock_github:
         mock_user = MagicMock()
         mock_user.login = "test_user"
         mock_user.raw_headers = {"x-oauth-scopes": "repo, read:org"}
