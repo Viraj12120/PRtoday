@@ -71,27 +71,50 @@ class Dashboard:
         )
 
         # 2. Risk Score Panel
-        # Large ASCII risk score representation
+        # Large ASCII risk score representation dynamically rendered per PR score
         score_val = result.risk_score
-        if _can_encode("█"):
-            ascii_score = f"""
-  ██████╗ ██████╗
- ██╔════╝██╔═══██╗
- ╚█████╗ ██║   ██║
-  ╚═══██╗██║   ██║
- ██████╔╝╚██████╔╝
- ╚═════╝  ╚═════╝
-     Score: {score_val}/100 [{level}]
-"""
-        else:
-            ascii_score = f"""
-   ____   ____
-  / __ \\ / __ \\\\
-  \\__ \\ | |  | |
-  ___) || |__| |
- |____/  \\____/
-     Score: {score_val}/100 [{level}]
-"""
+
+        digits_unicode = {
+            "0": ["  ████  ", " ██  ██ ", " ██  ██ ", " ██  ██ ", "  ████  "],
+            "1": ["   ██   ", "  ███   ", "   ██   ", "   ██   ", "  ████  "],
+            "2": ["  ████  ", "     ██ ", "   ███  ", "  ██    ", " ██████ "],
+            "3": ["  ████  ", "     ██ ", "   ███  ", "     ██ ", "  ████  "],
+            "4": [" ██  ██ ", " ██  ██ ", " ██████ ", "     ██ ", "     ██ "],
+            "5": [" ██████ ", " ██     ", " █████  ", "     ██ ", " ██████ "],
+            "6": ["  ████  ", " ██     ", " █████  ", " ██  ██ ", "  ████  "],
+            "7": [" ██████ ", "     ██ ", "    ██  ", "   ██   ", "   ██   "],
+            "8": ["  ████  ", " ██  ██ ", "  ████  ", " ██  ██ ", "  ████  "],
+            "9": ["  ████  ", " ██  ██ ", "  █████ ", "     ██ ", "  ████  "],
+        }
+
+        digits_ascii = {
+            "0": ["  ---   ", " |   |  ", " |   |  ", " |   |  ", "  ---   "],
+            "1": ["   /|   ", "  / |   ", "    |   ", "    |   ", "  ----- "],
+            "2": ["  ---   ", "     |  ", "  ---   ", " |      ", "  ----- "],
+            "3": ["  ---   ", "     |  ", "  ---   ", "     |  ", "  ---   "],
+            "4": [" |   |  ", " |   |  ", "  ---   ", "     |  ", "     |  "],
+            "5": ["  ---   ", " |      ", "  ---   ", "     |  ", "  ---   "],
+            "6": ["  ---   ", " |      ", "  ---   ", " |   |  ", "  ---   "],
+            "7": ["  ---   ", "     |  ", "    /   ", "   /    ", "  /     "],
+            "8": ["  ---   ", " |   |  ", "  ---   ", " |   |  ", "  ---   "],
+            "9": ["  ---   ", " |   |  ", "  ---   ", "     |  ", "  ---   "],
+        }
+
+        score_str = str(score_val)
+        digits_dict = digits_unicode if _can_encode("█") else digits_ascii
+
+        ascii_lines = []
+        for i in range(5):
+            line_parts = []
+            for digit in score_str:
+                line_parts.append(digits_dict[digit][i])
+            ascii_lines.append(" ".join(line_parts))
+
+        ascii_score = (
+            "\n"
+            + "\n".join(ascii_lines)
+            + f"\n\n     Score: {score_val}/100 [{level}]\n"
+        )
 
         # A breakdown table of deterministic components
         breakdown_table = Table(show_header=True, box=None, padding=(0, 2))
