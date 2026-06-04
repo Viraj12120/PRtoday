@@ -1,6 +1,7 @@
 """Terminal UI dashboard for rendering PRtoday analysis results."""
 
 import logging
+import sys
 
 from rich.console import Console
 from rich.panel import Panel
@@ -11,6 +12,15 @@ from rich.tree import Tree
 from pr_today.models import AnalysisResult
 
 logger = logging.getLogger("pr_today.dashboard")
+
+
+def _can_encode(char: str) -> bool:
+    """Check if stdout can encode the specified character."""
+    try:
+        char.encode(sys.stdout.encoding or "ascii")
+        return True
+    except Exception:
+        return False
 
 
 class Dashboard:
@@ -35,10 +45,20 @@ class Dashboard:
         else:
             accent_color = "red"
 
+        # Safe character encodings
+        sym_dash = "—" if _can_encode("—") else "-"
+        sym_folder = "📁 " if _can_encode("📁") else "[Dir] "
+        sym_warn = "⚠️ " if _can_encode("⚠️") else "[!] "
+        sym_cross = "❌ " if _can_encode("❌") else "[-] "
+        sym_check = "✅ " if _can_encode("✅") else "[+] "
+        sym_bullet = "• " if _can_encode("•") else "- "
+
         # 1. Header Panel
         header_text = Text()
         header_text.append("PR TODAY ", style="bold magenta")
-        header_text.append("— AI-Assisted PR Risk Assessment\n", style="bold white")
+        header_text.append(
+            f"{sym_dash} AI-Assisted PR Risk Assessment\n", style="bold white"
+        )
         header_text.append(
             f"Repository: {result.repo}  |  PR: #{result.pr_number}  |  Author: @{author}  |  Date: {result.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}",
             style="dim white",
@@ -53,7 +73,8 @@ class Dashboard:
         # 2. Risk Score Panel
         # Large ASCII risk score representation
         score_val = result.risk_score
-        ascii_score = f"""
+        if _can_encode("█"):
+            ascii_score = f"""
   ██████╗ ██████╗
  ██╔════╝██╔═══██╗
  ╚█████╗ ██║   ██║
@@ -62,6 +83,16 @@ class Dashboard:
  ╚═════╝  ╚═════╝
      Score: {score_val}/100 [{level}]
 """
+        else:
+            ascii_score = f"""
+   ____   ____
+  / __ \\ / __ \\\\
+  \\__ \\ | |  | |
+  ___) || |__| |
+ |____/  \\____/
+     Score: {score_val}/100 [{level}]
+"""
+
         # A breakdown table of deterministic components
         breakdown_table = Table(show_header=True, box=None, padding=(0, 2))
         breakdown_table.add_column("Risk Dimension", style="bold white")
@@ -107,7 +138,7 @@ class Dashboard:
         blast_tree = Tree("Impacted Packages")
         if result.blast_radius:
             for mod in result.blast_radius:
-                blast_tree.add(f"[cyan]📁 {mod}[/cyan]")
+                blast_tree.add(f"[cyan]{sym_folder}{mod}[/cyan]")
         else:
             blast_tree.add("[dim]No modules affected (empty change list).[/dim]")
 
@@ -122,13 +153,13 @@ class Dashboard:
         missing_tests_text = Text()
         if result.missing_tests:
             missing_tests_text.append(
-                "⚠️ Missing tests for files:\n", style="bold yellow"
+                f"{sym_warn}Missing tests for files:\n", style="bold yellow"
             )
             for f in result.missing_tests:
-                missing_tests_text.append(f"  ❌ {f}\n", style="red")
+                missing_tests_text.append(f"  {sym_cross}{f}\n", style="red")
         else:
             missing_tests_text.append(
-                "✅ All changed source files have corresponding tests.",
+                f"{sym_check}All changed source files have corresponding tests.",
                 style="bold green",
             )
 
@@ -150,13 +181,13 @@ class Dashboard:
             if result.ai_failures:
                 ai_text.append("Potential Failure Scenarios:\n", style="bold red")
                 for scenario in result.ai_failures:
-                    ai_text.append(f"  • {scenario}\n", style="red")
+                    ai_text.append(f"  {sym_bullet}{scenario}\n", style="red")
                 ai_text.append("\n")
 
             if result.ai_focus_areas:
                 ai_text.append("Reviewer Focus Areas:\n", style="bold yellow")
                 for area in result.ai_focus_areas:
-                    ai_text.append(f"  • {area}\n", style="yellow")
+                    ai_text.append(f"  {sym_bullet}{area}\n", style="yellow")
 
         ai_panel = Panel(
             ai_text,
