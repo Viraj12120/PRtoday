@@ -11,7 +11,7 @@ This project and everyone participating in it is governed by the PR Today Code o
 ## Development Setup
 
 1. **Prerequisites**: Python 3.10+ and Poetry.
-2. **Clone the repo**: `git clone https://github.com/your-org/pr-today.git`
+2. **Clone the repo**: `git clone https://github.com/Viraj12120/PRtoday.git`
 3. **Install dependencies**: `poetry install`
 4. **Run tests**: `poetry run pytest`
 5. **Format code**: `poetry run black .`

@@ -17,7 +17,7 @@ PR Today is a terminal-first, developer-centric CLI tool that automatically anal
 
 ---
 
-## Architecture
+## [Architecture](docs/architecture.md)
 
 PR Today is built as a pure Python CLI application with three core subsystems: the **Risk Engine**, **AI Review Engine**, and **Terminal Dashboard** — all orchestrated through a Typer-based CLI.
 
@@ -208,8 +208,8 @@ You will need Python 3.10+ installed.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/pr-today.git
-cd pr-today
+git clone https://github.com/Viraj12120/PRtoday.git
+cd PRtoday
 
 # Create and activate virtual environment
 python -m venv .venv
