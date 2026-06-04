@@ -113,7 +113,7 @@ class Dashboard:
         ascii_score = (
             "\n"
             + "\n".join(ascii_lines)
-            + f"\n\n     Score: {score_val}/100 [{level}]\n"
+            + f"\n\n     PR Score: {score_val}/100 [{level}]\n"
         )
 
         # A breakdown table of deterministic components
