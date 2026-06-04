@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from pr_today.models import Base

@@ -10,7 +10,6 @@ from github import Github
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from sqlalchemy import select
 
 from pr_today.config import settings, setup_logging
@@ -59,12 +58,18 @@ def main(
 @app.command()
 def auth() -> None:
     """Check validity and scope of configured GitHub PAT token."""
-    console.print(Panel.fit("[bold cyan]PRtoday GitHub Token Authentication Verification[/bold cyan]"))
-    
+    console.print(
+        Panel.fit(
+            "[bold cyan]PRtoday GitHub Token Authentication Verification[/bold cyan]"
+        )
+    )
+
     if not settings.GITHUB_PAT:
-        console.print("[bold red]Error:[/bold red] GITHUB_PAT is not set. Configure it in environment or .env file.")
+        console.print(
+            "[bold red]Error:[/bold red] GITHUB_PAT is not set. Configure it in environment or .env file."
+        )
         raise typer.Exit(1)
-        
+
     try:
         with console.status("[bold cyan]Verifying token with GitHub API..."):
             g = Github(settings.GITHUB_PAT)
@@ -72,8 +77,8 @@ def auth() -> None:
             username = user.login
             # PyGithub headers will contain OAuth scopes info
             scopes = user.raw_headers.get("x-oauth-scopes", "no scopes listed")
-            
-        console.print(f"[bold green]✓ Authentication Successful![/bold green]")
+
+        console.print("[bold green]✓ Authentication Successful![/bold green]")
         console.print(f"Logged in as: [bold cyan]@{username}[/bold cyan]")
         console.print(f"Token Scopes: [dim]{scopes}[/dim]")
     except Exception as e:
@@ -107,11 +112,11 @@ def analyze(
 
     async def _async_run() -> None:
         await init_db()
-        
+
         # Display spinner while Orchestrator is running
         with console.status(f"[bold cyan]Analyzing PR #{pr} in {repo}..."):
             result = await orchestrator.run(repo, pr, no_ai=no_ai)
-            
+
         # Determine author by reading from GitHub
         author = "Unknown"
         try:
@@ -120,7 +125,7 @@ def analyze(
             author = g.get_repo(repo).get_pull(pr).user.login
         except Exception:
             pass
-            
+
         dashboard.render(result, author=author)
 
     try:
@@ -135,6 +140,7 @@ def analyze(
         console.print(f"[bold red]Unexpected Error:[/bold red] {str(e)}")
         if settings.LOG_LEVEL == "DEBUG":
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 
@@ -149,17 +155,24 @@ def history(
     )
 ) -> None:
     """View database history of previous PR analyses."""
+
     async def _fetch_history() -> list[AnalysisResult]:
         await init_db()
         async with get_session() as session:
-            stmt = select(AnalysisResult).order_by(AnalysisResult.created_at.desc()).limit(limit)
+            stmt = (
+                select(AnalysisResult)
+                .order_by(AnalysisResult.created_at.desc())
+                .limit(limit)
+            )
             res = await session.execute(stmt)
             return list(res.scalars().all())
 
     try:
         records = asyncio.run(_fetch_history())
         if not records:
-            console.print("[bold yellow]No PR risk history found in database.[/bold yellow]")
+            console.print(
+                "[bold yellow]No PR risk history found in database.[/bold yellow]"
+            )
             return
 
         table = Table(
@@ -184,7 +197,9 @@ def history(
             else:
                 level_style = "red"
 
-            migrations_indicator = "[red]Yes[/red]" if r.db_migrations_detected else "[green]No[/green]"
+            migrations_indicator = (
+                "[red]Yes[/red]" if r.db_migrations_detected else "[green]No[/green]"
+            )
 
             table.add_row(
                 r.created_at.strftime("%Y-%m-%d %H:%M"),

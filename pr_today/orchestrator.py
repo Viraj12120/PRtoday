@@ -2,23 +2,27 @@
 
 import asyncio
 import logging
-from typing import List
 
 import httpx
-from github import BadCredentialsException, Github, RateLimitExceededException, UnknownObjectException
-from sqlalchemy.future import select
+from github import (
+    BadCredentialsException,
+    Github,
+    RateLimitExceededException,
+    UnknownObjectException,
+)
 
 from pr_today.ai_engine import AIEngine, AIReview
 from pr_today.config import settings
 from pr_today.database import get_session
 from pr_today.models import AnalysisResult
-from pr_today.risk_engine import RiskEngine, RiskResult
+from pr_today.risk_engine import RiskEngine
 
 logger = logging.getLogger("pr_today.orchestrator")
 
 
 class OrchestratorError(Exception):
     """Base exception for errors during Orchestrator execution."""
+
     pass
 
 
@@ -29,7 +33,9 @@ class Orchestrator:
         self.risk_engine = RiskEngine()
         self.ai_engine = AIEngine()
 
-    async def run(self, repo: str, pr_number: int, no_ai: bool = False) -> AnalysisResult:
+    async def run(
+        self, repo: str, pr_number: int, no_ai: bool = False
+    ) -> AnalysisResult:
         """Execute the full PR risk analysis workflow.
 
         Args:
@@ -100,10 +106,10 @@ class Orchestrator:
             try:
                 repo_obj = g.get_repo(repo)
                 pr_obj = repo_obj.get_pull(pr_number)
-                
+
                 # Fetch files changed
                 changed_files = [f.filename for f in pr_obj.get_files()]
-                
+
                 pr_metadata = {
                     "title": pr_obj.title,
                     "author": pr_obj.user.login,
@@ -112,15 +118,23 @@ class Orchestrator:
                 break
             except RateLimitExceededException:
                 if retries > 0:
-                    logger.warning("GitHub API rate limit exceeded. Retrying in 5 seconds...")
+                    logger.warning(
+                        "GitHub API rate limit exceeded. Retrying in 5 seconds..."
+                    )
                     await asyncio.sleep(5)
                     retries -= 1
                     continue
-                raise OrchestratorError("GitHub API rate limit exceeded. Please try again later.")
+                raise OrchestratorError(
+                    "GitHub API rate limit exceeded. Please try again later."
+                )
             except BadCredentialsException:
-                raise OrchestratorError("Invalid GitHub Personal Access Token (GITHUB_PAT).")
+                raise OrchestratorError(
+                    "Invalid GitHub Personal Access Token (GITHUB_PAT)."
+                )
             except UnknownObjectException:
-                raise OrchestratorError(f"Repository '{repo}' or PR #{pr_number} not found on GitHub.")
+                raise OrchestratorError(
+                    f"Repository '{repo}' or PR #{pr_number} not found on GitHub."
+                )
             except Exception as e:
                 raise OrchestratorError(f"GitHub client error: {str(e)}")
 
@@ -135,7 +149,9 @@ class Orchestrator:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(url, headers=headers)
                 if response.status_code == 401:
-                    raise OrchestratorError("Invalid GitHub Personal Access Token (GITHUB_PAT) when fetching diff.")
+                    raise OrchestratorError(
+                        "Invalid GitHub Personal Access Token (GITHUB_PAT) when fetching diff."
+                    )
                 elif response.status_code == 404:
                     raise OrchestratorError(f"Diff not found for PR #{pr_number}.")
                 response.raise_for_status()

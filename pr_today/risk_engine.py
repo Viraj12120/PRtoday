@@ -9,6 +9,7 @@ from typing import Dict, List
 @dataclass
 class RiskResult:
     """Dataclass representing the result of a PR risk analysis."""
+
     score: int
     level: str  # LOW, MEDIUM, HIGH
     breakdown: Dict[str, float]
@@ -43,13 +44,10 @@ class RiskEngine:
 
         # Calculate final weighted score
         weighted_score = (
-            score_vol * 0.30 +
-            score_db * 0.30 +
-            score_config * 0.25 +
-            score_dep * 0.15
+            score_vol * 0.30 + score_db * 0.30 + score_config * 0.25 + score_dep * 0.15
         )
         score = int(round(weighted_score))
-        
+
         # Ensure score is within 0-100 range
         score = max(0, min(100, score))
 
@@ -99,7 +97,16 @@ class RiskEngine:
                 multiplier = 3.0
             elif self._is_test_file(f):
                 multiplier = 1.0
-            elif path.suffix in (".py", ".js", ".ts", ".go", ".rs", ".java", ".cpp", ".c"):
+            elif path.suffix in (
+                ".py",
+                ".js",
+                ".ts",
+                ".go",
+                ".rs",
+                ".java",
+                ".cpp",
+                ".c",
+            ):
                 multiplier = 2.0
             else:
                 multiplier = 0.5
@@ -190,14 +197,19 @@ class RiskEngine:
                 if parts:
                     filename = parts[-1]
                     test_filename = f"test_{filename}"
-                    
+
                     # Formulate expected test path: replace first component with 'tests'
                     # and prefix filename with 'test_'
                     expected_test_path = Path("tests") / test_filename
-                    expected_nested_test_path = Path("tests") / Path(*parts[:-1]) / test_filename
+                    expected_nested_test_path = (
+                        Path("tests") / Path(*parts[:-1]) / test_filename
+                    )
 
                     # Check if test file is in files list or exists on disk
-                    if not (expected_test_path.exists() or expected_nested_test_path.exists()):
+                    if not (
+                        expected_test_path.exists()
+                        or expected_nested_test_path.exists()
+                    ):
                         missing.append(f)
         return missing
 
@@ -232,7 +244,8 @@ class RiskEngine:
         return (
             path.name.lower().startswith("test_")
             or path.name.lower().endswith("_test")
-            or path.suffix == ".py" and path.name.lower().startswith("test")
+            or path.suffix == ".py"
+            and path.name.lower().startswith("test")
             or "tests" in path.parts
             or "test" in path.parts
         )

@@ -8,7 +8,7 @@ def test_low_risk_pr():
     engine = RiskEngine()
     diff = "diff --git a/README.md b/README.md\n+Some documentation updates"
     files = ["README.md"]
-    
+
     result = engine.analyze(diff, files)
     assert 0 <= result.score <= 33
     assert result.level == "LOW"
@@ -104,12 +104,12 @@ def test_determinism():
 def test_dependency_change_increases_score():
     """Changing requirements.txt should trigger dependency dimension and increase the score."""
     engine = RiskEngine()
-    
+
     # Baseline PR with 1 source file (no dependencies, no migrations, no configs)
     res_base = engine.analyze("", ["pr_today/cli.py"])
-    
+
     # PR with the same file plus a requirements.txt change
     res_dep = engine.analyze("", ["pr_today/cli.py", "requirements.txt"])
-    
+
     assert res_dep.score > res_base.score
     assert res_dep.breakdown["dependency_shifts"] == 100.0

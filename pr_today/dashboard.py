@@ -1,8 +1,8 @@
 """Terminal UI dashboard for rendering PRtoday analysis results."""
 
 import logging
+
 from rich.console import Console
-from rich.layout import Layout
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -39,8 +39,11 @@ class Dashboard:
         header_text = Text()
         header_text.append("PR TODAY ", style="bold magenta")
         header_text.append("— AI-Assisted PR Risk Assessment\n", style="bold white")
-        header_text.append(f"Repository: {result.repo}  |  PR: #{result.pr_number}  |  Author: @{author}  |  Date: {result.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}", style="dim white")
-        
+        header_text.append(
+            f"Repository: {result.repo}  |  PR: #{result.pr_number}  |  Author: @{author}  |  Date: {result.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            style="dim white",
+        )
+
         header_panel = Panel(
             header_text,
             border_style="cyan",
@@ -51,12 +54,12 @@ class Dashboard:
         # Large ASCII risk score representation
         score_val = result.risk_score
         ascii_score = f"""
-  ██████╗ ██████╗ 
+  ██████╗ ██████╗
  ██╔════╝██╔═══██╗
  ╚█████╗ ██║   ██║
   ╚═══██╗██║   ██║
  ██████╔╝╚██████╔╝
- ╚═════╝  ╚═════╝ 
+ ╚═════╝  ╚═════╝
      Score: {score_val}/100 [{level}]
 """
         # A breakdown table of deterministic components
@@ -64,24 +67,39 @@ class Dashboard:
         breakdown_table.add_column("Risk Dimension", style="bold white")
         breakdown_table.add_column("Severity Score", justify="right", style="cyan")
 
-        breakdown_table.add_row("Volume & Criticality (30%)", f"{'Yes' if len(result.files_changed) > 0 else 'No'}")
-        breakdown_table.add_row("Database Migrations (30%)", f"{'DETECTED' if result.db_migrations_detected else 'None'}", style="red" if result.db_migrations_detected else "green")
-        breakdown_table.add_row("Config/Secret Changes (25%)", f"{'DETECTED' if result.config_changes_detected else 'None'}", style="red" if result.config_changes_detected else "green")
-        breakdown_table.add_row("Dependency Shifts (15%)", f"{'DETECTED' if result.dependency_changes_detected else 'None'}", style="yellow" if result.dependency_changes_detected else "green")
+        breakdown_table.add_row(
+            "Volume & Criticality (30%)",
+            f"{'Yes' if len(result.files_changed) > 0 else 'No'}",
+        )
+        breakdown_table.add_row(
+            "Database Migrations (30%)",
+            f"{'DETECTED' if result.db_migrations_detected else 'None'}",
+            style="red" if result.db_migrations_detected else "green",
+        )
+        breakdown_table.add_row(
+            "Config/Secret Changes (25%)",
+            f"{'DETECTED' if result.config_changes_detected else 'None'}",
+            style="red" if result.config_changes_detected else "green",
+        )
+        breakdown_table.add_row(
+            "Dependency Shifts (15%)",
+            f"{'DETECTED' if result.dependency_changes_detected else 'None'}",
+            style="yellow" if result.dependency_changes_detected else "green",
+        )
 
         score_content = Table.grid(expand=True, padding=1)
         score_content.add_column(ratio=1)
         score_content.add_column(ratio=2)
         score_content.add_row(
             Text(ascii_score, style=f"bold {accent_color}"),
-            Panel(breakdown_table, title="Score Breakdown", border_style="dim white")
+            Panel(breakdown_table, title="Score Breakdown", border_style="dim white"),
         )
-        
+
         score_panel = Panel(
             score_content,
             title="[bold]Risk Assessment[/bold]",
             border_style=accent_color,
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
         # 3. Blast Radius Tree View Panel
@@ -97,23 +115,28 @@ class Dashboard:
             blast_tree,
             title="[bold]Blast Radius[/bold]",
             border_style="blue",
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
         # 4. Missing Tests Panel
         missing_tests_text = Text()
         if result.missing_tests:
-            missing_tests_text.append("⚠️ Missing tests for files:\n", style="bold yellow")
+            missing_tests_text.append(
+                "⚠️ Missing tests for files:\n", style="bold yellow"
+            )
             for f in result.missing_tests:
                 missing_tests_text.append(f"  ❌ {f}\n", style="red")
         else:
-            missing_tests_text.append("✅ All changed source files have corresponding tests.", style="bold green")
+            missing_tests_text.append(
+                "✅ All changed source files have corresponding tests.",
+                style="bold green",
+            )
 
         tests_panel = Panel(
             missing_tests_text,
             title="[bold]Missing Test Coverage[/bold]",
             border_style="yellow" if result.missing_tests else "green",
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
         # 5. AI Review Panel
@@ -123,13 +146,13 @@ class Dashboard:
         else:
             ai_text.append("Summary:\n", style="bold cyan")
             ai_text.append(f"{result.ai_summary}\n\n", style="white")
-            
+
             if result.ai_failures:
                 ai_text.append("Potential Failure Scenarios:\n", style="bold red")
                 for scenario in result.ai_failures:
                     ai_text.append(f"  • {scenario}\n", style="red")
                 ai_text.append("\n")
-                
+
             if result.ai_focus_areas:
                 ai_text.append("Reviewer Focus Areas:\n", style="bold yellow")
                 for area in result.ai_focus_areas:
@@ -139,12 +162,12 @@ class Dashboard:
             ai_text,
             title="[bold]AI Predictions & Code Review[/bold]",
             border_style="magenta",
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
         # Build UI layout
         self.console.print(header_panel)
-        
+
         # Risk score panel takes full width
         self.console.print(score_panel)
 

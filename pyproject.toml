@@ -61,3 +61,4 @@ line-length = 88
 line-length = 88
 # Enable basic Pyflakes and Pycodestyle rules
 lint.select = ["E", "F", "W", "I"]
+lint.ignore = ["E501"]

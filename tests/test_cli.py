@@ -1,6 +1,5 @@
 """Unit tests for the Typer CLI."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,6 +16,7 @@ runner = CliRunner()
 def mock_analysis_result() -> AnalysisResult:
     """Fixture returning a mock populated AnalysisResult."""
     import datetime
+
     return AnalysisResult(
         id=1,
         repo="org/repo",
@@ -38,16 +38,20 @@ def mock_analysis_result() -> AnalysisResult:
 
 def test_cli_analyze_invokes_orchestrator(mock_analysis_result):
     """Verify analyze command invokes orchestrator and dashboard correctly."""
-    with patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run, \
-         patch("pr_today.cli.Dashboard.render") as mock_render, \
-         patch("pr_today.cli.init_db", new_callable=AsyncMock) as mock_init_db, \
-         patch("pr_today.cli.Github") as mock_github:
-         
+    with (
+        patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run,
+        patch("pr_today.cli.Dashboard.render") as mock_render,
+        patch("pr_today.cli.init_db", new_callable=AsyncMock) as mock_init_db,
+        patch("pr_today.cli.Github") as mock_github,
+    ):
+
         mock_run.return_value = mock_analysis_result
-        mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = "test_user"
+        mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = (
+            "test_user"
+        )
 
         result = runner.invoke(app, ["analyze", "--repo", "org/repo", "--pr", "42"])
-        
+
         assert result.exit_code == 0
         mock_init_db.assert_called_once()
         mock_run.assert_called_once_with("org/repo", 42, no_ai=False)
@@ -56,16 +60,22 @@ def test_cli_analyze_invokes_orchestrator(mock_analysis_result):
 
 def test_cli_analyze_no_ai_flag(mock_analysis_result):
     """Verify analyze command passes no_ai flag correctly to the orchestrator."""
-    with patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run, \
-         patch("pr_today.cli.Dashboard.render") as mock_render, \
-         patch("pr_today.cli.init_db", new_callable=AsyncMock) as mock_init_db, \
-         patch("pr_today.cli.Github") as mock_github:
-         
-        mock_run.return_value = mock_analysis_result
-        mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = "test_user"
+    with (
+        patch("pr_today.cli.Orchestrator.run", new_callable=AsyncMock) as mock_run,
+        patch("pr_today.cli.Dashboard.render"),
+        patch("pr_today.cli.init_db", new_callable=AsyncMock),
+        patch("pr_today.cli.Github") as mock_github,
+    ):
 
-        result = runner.invoke(app, ["analyze", "--repo", "org/repo", "--pr", "42", "--no-ai"])
-        
+        mock_run.return_value = mock_analysis_result
+        mock_github.return_value.get_repo.return_value.get_pull.return_value.user.login = (
+            "test_user"
+        )
+
+        result = runner.invoke(
+            app, ["analyze", "--repo", "org/repo", "--pr", "42", "--no-ai"]
+        )
+
         assert result.exit_code == 0
         mock_run.assert_called_once_with("org/repo", 42, no_ai=True)
 
@@ -80,7 +90,7 @@ def test_cli_auth_success():
 
         with patch.object(settings, "GITHUB_PAT", "valid_pat"):
             result = runner.invoke(app, ["auth"])
-            
+
             assert result.exit_code == 0
             assert "Authentication Successful" in result.output
             assert "@test_user" in result.output
@@ -94,14 +104,16 @@ def test_cli_history_renders_table(mock_analysis_result):
     mock_execute_result.scalars.return_value.all.return_value = [mock_analysis_result]
     mock_session.execute.return_value = mock_execute_result
 
-    with patch("pr_today.cli.get_session") as mock_get_session, \
-         patch("pr_today.cli.init_db", new_callable=AsyncMock):
-         
+    with (
+        patch("pr_today.cli.get_session") as mock_get_session,
+        patch("pr_today.cli.init_db", new_callable=AsyncMock),
+    ):
+
         # Use MagicMock for async context manager behavior
         mock_get_session.return_value.__aenter__.return_value = mock_session
 
         result = runner.invoke(app, ["history", "--limit", "5"])
-        
+
         assert result.exit_code == 0
         assert "PRtoday Analysis History" in result.output
         assert "#42" in result.output
@@ -112,7 +124,7 @@ def test_cli_missing_github_pat_validation():
     """Verify that a missing GITHUB_PAT triggers a clean ValidationError exit rather than a traceback."""
     with patch.object(settings, "GITHUB_PAT", ""):
         result = runner.invoke(app, ["auth"])
-        
+
         assert result.exit_code == 1
         assert "Error:" in result.output
         assert "GITHUB_PAT is not set" in result.output

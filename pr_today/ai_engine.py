@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import List
 
 import litellm
+
 from pr_today.config import settings
 from pr_today.risk_engine import RiskResult
 
@@ -15,6 +16,7 @@ logger = logging.getLogger("pr_today.ai_engine")
 @dataclass
 class AIReview:
     """Dataclass representing the result of an AI code review."""
+
     summary: str
     failure_scenarios: List[str]
     reviewer_focus_areas: List[str]
@@ -44,9 +46,9 @@ class AIEngine:
             "architectural issues, and focus areas for human reviewers.\n"
             "You must return your response in JSON format matching the schema:\n"
             "{\n"
-            "  \"summary\": \"A short paragraph summarizing the changes and main risks.\",\n"
-            "  \"failure_scenarios\": [\"scenario 1\", \"scenario 2\"],\n"
-            "  \"reviewer_focus_areas\": [\"area 1\", \"area 2\"]\n"
+            '  "summary": "A short paragraph summarizing the changes and main risks.",\n'
+            '  "failure_scenarios": ["scenario 1", "scenario 2"],\n'
+            '  "reviewer_focus_areas": ["area 1", "area 2"]\n'
             "}\n"
             "Ensure the output is valid JSON and nothing else."
         )
@@ -92,6 +94,10 @@ class AIEngine:
             logger.error("AI review failed: %s", str(e), exc_info=True)
             return AIReview(
                 summary=f"AI review temporarily unavailable (degraded state: {str(e)}).",
-                failure_scenarios=["Unable to predict failure scenarios due to system error."],
-                reviewer_focus_areas=["Inspect diff manually for edge cases and correctness."],
+                failure_scenarios=[
+                    "Unable to predict failure scenarios due to system error."
+                ],
+                reviewer_focus_areas=[
+                    "Inspect diff manually for edge cases and correctness."
+                ],
             )

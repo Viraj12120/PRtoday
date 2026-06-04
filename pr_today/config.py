@@ -2,6 +2,7 @@
 
 import logging
 from typing import Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -60,6 +61,7 @@ try:
 except Exception as e:
     # Print a user-friendly error and exit if validation fails
     import sys
+
     print(f"Configuration Error: {e}", file=sys.stderr)
     sys.exit(1)
 
