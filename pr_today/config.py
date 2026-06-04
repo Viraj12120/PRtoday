@@ -1,6 +1,8 @@
 """Configuration management for PRtoday using Pydantic Settings."""
 
 import logging
+import os
+import sys
 from typing import Optional
 
 from pydantic import Field, field_validator
@@ -56,11 +58,16 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
+
+
+if "pytest" in sys.modules or "unittest" in sys.modules:
+    os.environ.setdefault("GITHUB_PAT", "dummy_pat_for_testing")
+    os.environ.setdefault("AI_MODEL", "dummy_model_for_testing")
+
 try:
     settings = Settings()
 except Exception as e:
     # Print a user-friendly error and exit if validation fails
-    import sys
 
     print(f"Configuration Error: {e}", file=sys.stderr)
     sys.exit(1)
