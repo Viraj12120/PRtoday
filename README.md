@@ -281,12 +281,16 @@ pytest --cov=pr_today
 
 ---
 
-## Example Output
+## Output
 
 Here is an example of the terminal dashboard rendered when analyzing a PR:
 
 ![Terminal Dashboard Top](docs/images/output1.png)
 ![Terminal Dashboard Bottom](docs/images/output.png)
+
+Here is an example of the analysis history table:
+
+![Analysis History](docs/images/prhist.png)
 
 ## Contributing
 
