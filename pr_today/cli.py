@@ -1,257 +1,208 @@
-import typer
+"""Typer command-line interface entry point for PRtoday."""
+
+import asyncio
+import logging
 import sys
+from typing import Optional
+
+import typer
+from github import Github
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
-from pr_today.auth import set_token, get_github_token
-from pr_today.github import GithubClient, GithubClientError
-from pr_today.risk import calculate_risk, analyze_blast_radius, detect_missing_tests, RiskLevel
-from pr_today.ai import AiClient
+from sqlalchemy import select
 
-app = typer.Typer(help="PR Today - Predict production risk before merge.")
+from pr_today.config import settings, setup_logging
+from pr_today.dashboard import Dashboard
+from pr_today.database import get_session, init_db
+from pr_today.models import AnalysisResult
+from pr_today.orchestrator import Orchestrator, OrchestratorError
+
+app = typer.Typer(
+    help="PRtoday: A terminal-first, AI-assisted PR risk engine.",
+    no_args_is_help=True,
+)
 console = Console()
-
-def _can_encode(char: str) -> bool:
-    try:
-        char.encode(sys.stdout.encoding or 'ascii')
-        return True
-    except Exception:
-        return False
-
-# Unicode/ASCII fallbacks for compatibility
-SYM_WARN = "⚠" if _can_encode("⚠") else "!"
-SYM_CHECK = "✓" if _can_encode("✓") else "+"
-SYM_BULLET = "☉" if _can_encode("☉") else "*"
+logger = logging.getLogger("pr_today.cli")
 
 
-# Design system colors
-COLOR_BG = "#0D1117"
-COLOR_PANEL = "#161B22"
-COLOR_BORDER = "#30363D"
-COLOR_TEXT = "#C9D1D9"
-COLOR_SUCCESS = "#238636"
-COLOR_WARNING = "#D29922"
-COLOR_DANGER = "#DA3633"
+def version_callback(value: bool) -> None:
+    """Print the version and exit."""
+    if value:
+        console.print("[bold cyan]PRtoday v0.1.0[/bold cyan]")
+        raise typer.Exit()
 
 
-def _risk_color(level: RiskLevel) -> str:
-    """Map risk level to design system color."""
-    return {
-        RiskLevel.LOW: COLOR_SUCCESS,
-        RiskLevel.MEDIUM: COLOR_WARNING,
-        RiskLevel.HIGH: COLOR_DANGER,
-        RiskLevel.CRITICAL: COLOR_DANGER,
-    }[level]
+@app.callback()
+def main(
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output (DEBUG logging).",
+    ),
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Show PRtoday version.",
+    ),
+) -> None:
+    """PRtoday CLI global configurations."""
+    if verbose:
+        settings.LOG_LEVEL = "DEBUG"
+    setup_logging()
 
 
 @app.command()
-def auth():
-    """Authenticate with GitHub and AI Providers."""
-    console.print(Panel.fit("PR Today Authentication", style="bold blue"))
-
-    gh_token = Prompt.ask("Enter GitHub Personal Access Token", password=True)
-    if gh_token:
-        set_token("github", gh_token)
-        console.print(f"[green]{SYM_CHECK} GitHub token saved successfully.[/green]")
-
-    hf_token = Prompt.ask("Enter Hugging Face API Token (optional)", password=True, default="")
-    if hf_token:
-        set_token("hf", hf_token)
-        console.print(f"[green]{SYM_CHECK} Hugging Face token saved successfully.[/green]")
-
-
-@app.command()
-def analyze(repo: str = typer.Option(..., help="Repository name in format org/repo"),
-            pr: int = typer.Option(..., help="Pull Request number")):
-    """Analyze a Pull Request for production risk."""
+def auth() -> None:
+    """Check validity and scope of configured GitHub PAT token."""
+    console.print(Panel.fit("[bold cyan]PRtoday GitHub Token Authentication Verification[/bold cyan]"))
+    
+    if not settings.GITHUB_PAT:
+        console.print("[bold red]Error:[/bold red] GITHUB_PAT is not set. Configure it in environment or .env file.")
+        raise typer.Exit(1)
+        
     try:
-        client = GithubClient()
-
-        with console.status("[bold cyan]Fetching PR data from GitHub..."):
-            pr_data = client.get_pull_request(repo, pr)
-            files = client.get_pr_files(repo, pr)
-
-        # --- Risk Engine ---
-        with console.status("[bold cyan]Calculating deterministic risk score..."):
-            risk_report = calculate_risk(files)
-            blast_report = analyze_blast_radius(files)
-            test_report = detect_missing_tests(files)
-
-        # --- AI Review Engine ---
-        with console.status("[bold cyan]Generating AI failure predictions..."):
-            ai_client = AiClient()
-            ai_report = ai_client.generate_review(files)
-
-        # --- Save to local SQLite database ---
-        try:
-            from pr_today.db import save_analysis
-            save_analysis(repo, pr, pr_data.title, risk_report, ai_report)
-        except Exception as db_err:
-            console.print(f"[dim yellow]{SYM_WARN} Could not save analysis to history: {str(db_err)}[/dim yellow]")
-
-        # --- Render Terminal Dashboard ---
-        risk_color = _risk_color(risk_report.level)
-
-        # 1. Header Panel
-        console.print(Panel(
-            f"[bold {COLOR_TEXT}]PR TODAY[/bold {COLOR_TEXT}]",
-            border_style=COLOR_BORDER,
-        ))
-
-        # 2. Top Row: PR Information (Left) & Risk Score (Right)
-        meta_table = Table(show_header=False, box=None, padding=(0, 1))
-        meta_table.add_column("Key", style=f"bold {COLOR_TEXT}")
-        meta_table.add_column("Value", style=COLOR_TEXT)
-        meta_table.add_row("Repository", repo)
-        meta_table.add_row("PR", f"#{pr} - {pr_data.title}")
-        meta_table.add_row("Files Changed", str(risk_report.total_files_changed))
-        meta_table.add_row("Lines", f"+{risk_report.total_additions} / -{risk_report.total_deletions}")
-
-        score_text = Text(f"\n {risk_report.score}/100 [{risk_report.level.value}] \n", style=f"bold {risk_color}")
-
-        top_row = Table.grid(expand=True, padding=1)
-        top_row.add_column(ratio=2)
-        top_row.add_column(ratio=1)
-        top_row.add_row(
-            Panel(meta_table, title="[bold]PR Information[/bold]", border_style=COLOR_BORDER),
-            Panel(score_text, title="[bold]Risk Score[/bold]", border_style=risk_color)
-        )
-        console.print(top_row)
-
-        # 3. Middle Row: Risk Factors (Left) & Blast Radius (Right)
-        factors_text = ""
-        if risk_report.triggered_factors:
-            for f in risk_report.triggered_factors:
-                factors_text += f"[{risk_color}][+] {f.name}[/{risk_color}]\n"
-                factors_text += f"    [dim]{f.description}[/dim]\n"
-        else:
-            factors_text = "[dim]No critical risk factors triggered.[/dim]"
-
-        blast_text = ""
-        if blast_report.affected_modules:
-            for mod in blast_report.affected_modules:
-                blast_text += f"  {mod}/*\n"
-            if blast_report.shared_libraries_impacted:
-                blast_text += "\n[bold]Shared Libraries:[/bold]\n"
-                for lib in blast_report.shared_libraries_impacted:
-                    blast_text += f"  {SYM_WARN} {lib}\n"
-            if blast_report.cross_cutting_concerns:
-                blast_text += "\n[bold]Cross-Cutting Concerns:[/bold]\n"
-                for cc in blast_report.cross_cutting_concerns:
-                    blast_text += f"  {SYM_WARN} {cc}\n"
-        else:
-            blast_text = "[dim]Changes are localized. No external modules impacted.[/dim]"
-
-        mid_row = Table.grid(expand=True, padding=1)
-        mid_row.add_column(ratio=1)
-        mid_row.add_column(ratio=1)
-        mid_row.add_row(
-            Panel(factors_text.strip(), title="[bold]Risk Factors[/bold]", border_style=COLOR_BORDER),
-            Panel(blast_text.strip(), title="[bold]Blast Radius[/bold]", border_style=COLOR_BORDER)
-        )
-        console.print(mid_row)
-
-        # 4. Bottom Row: Test Coverage (Left) & AI Review & Predictions (Right)
-        test_text = ""
-        if test_report.missing_unit_tests or test_report.missing_integration_tests:
-            if test_report.files_without_tests:
-                test_text += f"[{COLOR_WARNING}]Missing Unit Tests:[/{COLOR_WARNING}]\n"
-                for tf in test_report.files_without_tests:
-                    test_text += f"  [-] {tf}\n"
-            if test_report.missing_integration_tests:
-                test_text += f"\n[{COLOR_DANGER}][!] Missing Integration Tests[/{COLOR_DANGER}]\n"
-            test_text += f"\nTest Coverage: {test_report.coverage_ratio:.0%}"
-        else:
-            test_text = f"[{COLOR_SUCCESS}]{SYM_CHECK} All changed files have corresponding tests.[/{COLOR_SUCCESS}]\n\nTest Coverage: {test_report.coverage_ratio:.0%}"
-
-        ai_text = ""
-        if ai_report.error:
-            ai_text += f"[dim]AI Engine offline: {ai_report.error}[/dim]\n\n"
-        
-        ai_text += f"[bold {COLOR_TEXT}]Summary:[/bold {COLOR_TEXT}]\n{ai_report.summary}\n\n"
-        
-        if ai_report.failure_scenarios:
-            ai_text += f"[bold {COLOR_DANGER}]Potential Failure Scenarios:[/bold {COLOR_DANGER}]\n"
-            for scenario in ai_report.failure_scenarios:
-                ai_text += f"  {SYM_WARN} {scenario}\n"
-            ai_text += "\n"
+        with console.status("[bold cyan]Verifying token with GitHub API..."):
+            g = Github(settings.GITHUB_PAT)
+            user = g.get_user()
+            username = user.login
+            # PyGithub headers will contain OAuth scopes info
+            scopes = user.raw_headers.get("x-oauth-scopes", "no scopes listed")
             
-        if ai_report.reviewer_focus:
-            ai_text += f"[bold {COLOR_WARNING}]Reviewer Focus Areas:[/bold {COLOR_WARNING}]\n"
-            for focus in ai_report.reviewer_focus:
-                ai_text += f"  {SYM_BULLET} {focus}\n"
-            ai_text += "\n"
-
-        if ai_report.suggested_tests:
-            ai_text += f"[bold {COLOR_SUCCESS}]Suggested Tests:[/bold {COLOR_SUCCESS}]\n"
-            for test in ai_report.suggested_tests:
-                ai_text += f"  {SYM_CHECK} {test}\n"
-
-        bottom_row = Table.grid(expand=True, padding=1)
-        bottom_row.add_column(ratio=1)
-        bottom_row.add_column(ratio=1)
-        bottom_row.add_row(
-            Panel(
-                test_text.strip(),
-                title="[bold]Test Coverage[/bold]",
-                border_style=COLOR_WARNING if (test_report.missing_unit_tests or test_report.missing_integration_tests) else COLOR_SUCCESS
-            ),
-            Panel(ai_text.strip(), title="[bold]AI Review & Predictions[/bold]", border_style=COLOR_BORDER)
-        )
-        console.print(bottom_row)
-
-    except GithubClientError as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        raise typer.Exit(code=1)
+        console.print(f"[bold green]✓ Authentication Successful![/bold green]")
+        console.print(f"Logged in as: [bold cyan]@{username}[/bold cyan]")
+        console.print(f"Token Scopes: [dim]{scopes}[/dim]")
+    except Exception as e:
+        console.print(f"[bold red]Authentication Failed:[/bold red] {str(e)}")
+        raise typer.Exit(1)
 
 
 @app.command()
-def history():
-    """View analysis history."""
-    try:
-        from pr_today.db import get_history
-        records = get_history()
+def analyze(
+    repo: str = typer.Option(
+        ...,
+        "--repo",
+        "-r",
+        help="Repository in format 'owner/name' (e.g. Viraj12120/PRtoday).",
+    ),
+    pr: int = typer.Option(
+        ...,
+        "--pr",
+        "-p",
+        help="Pull Request number to analyze.",
+    ),
+    no_ai: bool = typer.Option(
+        False,
+        "--no-ai",
+        help="Disable the litellm AI review analysis.",
+    ),
+) -> None:
+    """Analyze a Pull Request risk scoring and blast radius."""
+    orchestrator = Orchestrator()
+    dashboard = Dashboard()
 
+    async def _async_run() -> None:
+        await init_db()
+        
+        # Display spinner while Orchestrator is running
+        with console.status(f"[bold cyan]Analyzing PR #{pr} in {repo}..."):
+            result = await orchestrator.run(repo, pr, no_ai=no_ai)
+            
+        # Determine author by reading from GitHub
+        author = "Unknown"
+        try:
+            g = Github(settings.GITHUB_PAT)
+            # Use cached call to get user login if available, otherwise fetch
+            author = g.get_repo(repo).get_pull(pr).user.login
+        except Exception:
+            pass
+            
+        dashboard.render(result, author=author)
+
+    try:
+        asyncio.run(_async_run())
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]Analysis aborted by user.[/bold yellow]")
+        sys.exit(130)
+    except OrchestratorError as oe:
+        console.print(f"[bold red]Analysis Error:[/bold red] {str(oe)}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[bold red]Unexpected Error:[/bold red] {str(e)}")
+        if settings.LOG_LEVEL == "DEBUG":
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+@app.command()
+def history(
+    limit: int = typer.Option(
+        10,
+        "--limit",
+        "-l",
+        help="Number of historical analyses to display.",
+    )
+) -> None:
+    """View database history of previous PR analyses."""
+    async def _fetch_history() -> list[AnalysisResult]:
+        await init_db()
+        async with get_session() as session:
+            stmt = select(AnalysisResult).order_by(AnalysisResult.created_at.desc()).limit(limit)
+            res = await session.execute(stmt)
+            return list(res.scalars().all())
+
+    try:
+        records = asyncio.run(_fetch_history())
         if not records:
-            console.print("[yellow]No analysis history found.[/yellow]")
+            console.print("[bold yellow]No PR risk history found in database.[/bold yellow]")
             return
 
-        table = Table(title="[bold]Analysis History[/bold]", border_style=COLOR_BORDER, expand=True)
+        table = Table(
+            title="[bold cyan]PRtoday Analysis History[/bold cyan]",
+            show_header=True,
+            header_style="bold magenta",
+        )
         table.add_column("Date", style="dim")
-        table.add_column("Repository", style="bold")
-        table.add_column("PR", style="cyan")
+        table.add_column("Repository")
+        table.add_column("PR #", justify="right")
         table.add_column("Risk Score", justify="right")
         table.add_column("Level")
-        table.add_column("Changes", justify="right")
+        table.add_column("Files Changed", justify="right")
+        table.add_column("Migrations", justify="center")
 
         for r in records:
-            # Map string risk level back to RiskLevel enum for color mapping
-            try:
-                enum_level = RiskLevel(r.risk_level)
-            except ValueError:
-                enum_level = RiskLevel.LOW
-            
-            risk_color = _risk_color(enum_level)
-            level_text = f"[{risk_color}]{r.risk_level}[/{risk_color}]"
-            score_text = f"[{risk_color}]{r.risk_score}/100[/{risk_color}]"
-            
-            date_str = r.timestamp.strftime("%Y-%m-%d %H:%M")
-            
+            level_upper = r.risk_level.upper()
+            if level_upper == "LOW":
+                level_style = "green"
+            elif level_upper == "MEDIUM":
+                level_style = "yellow"
+            else:
+                level_style = "red"
+
+            migrations_indicator = "[red]Yes[/red]" if r.db_migrations_detected else "[green]No[/green]"
+
             table.add_row(
-                date_str,
+                r.created_at.strftime("%Y-%m-%d %H:%M"),
                 r.repo,
-                f"#{r.pr_number} - {r.title}",
-                score_text,
-                level_text,
-                f"+{r.additions}/-{r.deletions}"
+                f"#{r.pr_number}",
+                f"[{level_style}]{r.risk_score}/100[/{level_style}]",
+                f"[{level_style}]{level_upper}[/{level_style}]",
+                str(len(r.files_changed)),
+                migrations_indicator,
             )
 
         console.print(table)
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]History retrieval aborted by user.[/bold yellow]")
+        sys.exit(130)
     except Exception as e:
-        console.print(f"[bold red]Error loading history:[/bold red] {str(e)}")
-        raise typer.Exit(code=1)
+        console.print(f"[bold red]Error fetching history:[/bold red] {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
