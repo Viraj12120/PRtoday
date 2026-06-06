@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pr-today"
-version = "0.1.0"
+version = "2.0.0"
 description = "Predict production risk before merge."
 authors = ["PR Today Team"]
 readme = "README.md"
@@ -17,6 +17,13 @@ aiosqlite = ">=0.20.0"
 litellm = ">=1.0.0"
 pydantic-settings = ">=2.0.0"
 python-dotenv = ">=1.0.0"
+# V2: FastAPI + async infrastructure
+fastapi = ">=0.115.0"
+uvicorn = {version = ">=0.30.0", extras = ["standard"]}
+asyncpg = ">=0.30.0"
+alembic = ">=1.14.0"
+redis = ">=5.0.0"
+pydantic = ">=2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -33,7 +40,7 @@ pr-today = "pr_today.cli:app"
 
 [project]
 name = "pr-today"
-version = "0.1.0"
+version = "2.0.0"
 description = "Predict production risk before merge."
 requires-python = ">=3.10"
 dependencies = [
@@ -45,7 +52,13 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "litellm>=1.0.0",
     "pydantic-settings>=2.0.0",
-    "python-dotenv>=1.0.0"
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "redis>=5.0.0",
+    "pydantic>=2.0.0"
 ]
 
 [project.scripts]

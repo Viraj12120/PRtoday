@@ -23,3 +23,9 @@ debug_response.txt
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Workflow tracking (local-only, not committed)
+WORKFLOW.md
+
+# Alembic migration cache
+pr_today/migrations/versions/__pycache__/

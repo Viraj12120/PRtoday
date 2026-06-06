@@ -39,6 +39,26 @@ class Settings(BaseSettings):
         description="OpenAI API key.",
     )
 
+    # Database and infrastructure
+    DATABASE_URL: str = Field(
+        "sqlite+aiosqlite:///~/.pr_today/history.db",
+        description="Async database URL. Use postgresql+asyncpg:// for API server.",
+    )
+    REDIS_URL: Optional[str] = Field(
+        None,
+        description="Redis URL for caching analysis results (e.g. redis://localhost:6379/0).",
+    )
+
+    # API server
+    API_HOST: str = Field(
+        "0.0.0.0",
+        description="Host to bind the API server.",
+    )
+    API_PORT: int = Field(
+        8000,
+        description="Port for the API server.",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
