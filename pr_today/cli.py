@@ -25,11 +25,14 @@ app = typer.Typer(
 console = Console()
 logger = logging.getLogger("pr_today.cli")
 
+# Default API URL for the --api-url flag
+DEFAULT_API_URL = "http://localhost:8000"
+
 
 def version_callback(value: bool) -> None:
     """Print the version and exit."""
     if value:
-        console.print("[bold cyan]PRtoday v0.1.0[/bold cyan]")
+        console.print("[bold cyan]PRtoday v2.0.0[/bold cyan]")
         raise typer.Exit()
 
 
@@ -105,8 +108,20 @@ def analyze(
         "--no-ai",
         help="Disable the litellm AI review analysis.",
     ),
+    api_url: Optional[str] = typer.Option(
+        None,
+        "--api-url",
+        help=f"Delegate analysis to a running API server instead of local execution. Default: {DEFAULT_API_URL}",
+    ),
 ) -> None:
     """Analyze a Pull Request risk scoring and blast radius."""
+
+    # ── Remote API mode ──────────────────────────────────────────────────
+    if api_url is not None:
+        _analyze_via_api(api_url, repo, pr)
+        return
+
+    # ── Local execution mode (original behavior) ─────────────────────────
     orchestrator = Orchestrator()
     dashboard = Dashboard()
 
@@ -145,6 +160,66 @@ def analyze(
         sys.exit(1)
 
 
+def _analyze_via_api(api_url: str, repo: str, pr: int) -> None:
+    """Delegate analysis to a remote API server via HTTP POST."""
+    import httpx
+
+    url = f"{api_url.rstrip('/')}/analyze"
+    payload = {"repo": repo, "pr_number": pr, "user_id": "cli-user"}
+
+    console.print(f"[dim]Delegating to API: {url}[/dim]")
+
+    try:
+        with console.status(f"[bold cyan]Analyzing PR #{pr} via API..."):
+            response = httpx.post(url, json=payload, timeout=60.0)
+
+        if response.status_code == 200:
+            data = response.json()
+            # Render a simplified table of results
+            table = Table(
+                title=f"[bold cyan]PR #{pr} Risk Analysis ({repo})[/bold cyan]",
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("Metric", style="bold white")
+            table.add_column("Value", style="cyan")
+
+            table.add_row("Risk Score", f"{data['risk_score']}/100")
+            table.add_row("Blast Radius", ", ".join(data.get("blast_radius", [])))
+            table.add_row(
+                "Files Changed", str(len(data.get("files_changed", [])))
+            )
+            table.add_row(
+                "AI Summary", data.get("ai_summary", "N/A") or "N/A"
+            )
+
+            findings = data.get("security_findings", [])
+            if findings:
+                table.add_row(
+                    "Security Findings",
+                    "\n".join(f"⚠ {f}" for f in findings),
+                )
+            else:
+                table.add_row("Security Findings", "[green]None[/green]")
+
+            console.print(table)
+        else:
+            console.print(
+                f"[bold red]API Error ({response.status_code}):[/bold red] {response.text}"
+            )
+            sys.exit(1)
+
+    except httpx.ConnectError:
+        console.print(
+            f"[bold red]Connection Error:[/bold red] Could not reach API at {api_url}. "
+            "Is the server running?"
+        )
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[bold red]API Error:[/bold red] {str(e)}")
+        sys.exit(1)
+
+
 @app.command()
 def history(
     limit: int = typer.Option(
@@ -152,10 +227,21 @@ def history(
         "--limit",
         "-l",
         help="Number of historical analyses to display.",
-    )
+    ),
+    api_url: Optional[str] = typer.Option(
+        None,
+        "--api-url",
+        help=f"Fetch history from a running API server. Default: {DEFAULT_API_URL}",
+    ),
 ) -> None:
     """View database history of previous PR analyses."""
 
+    # ── Remote API mode ──────────────────────────────────────────────────
+    if api_url is not None:
+        _history_via_api(api_url, limit)
+        return
+
+    # ── Local execution mode (original behavior) ─────────────────────────
     async def _fetch_history() -> list[AnalysisResult]:
         await init_db()
         async with get_session() as session:
@@ -217,6 +303,74 @@ def history(
         sys.exit(130)
     except Exception as e:
         console.print(f"[bold red]Error fetching history:[/bold red] {str(e)}")
+        sys.exit(1)
+
+
+def _history_via_api(api_url: str, limit: int) -> None:
+    """Fetch analysis history from a remote API server."""
+    import httpx
+
+    url = f"{api_url.rstrip('/')}/history"
+    params = {"limit": limit}
+
+    console.print(f"[dim]Fetching history from API: {url}[/dim]")
+
+    try:
+        with console.status("[bold cyan]Fetching history via API..."):
+            response = httpx.get(url, params=params, timeout=30.0)
+
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+
+            if not results:
+                console.print(
+                    "[bold yellow]No PR risk history found.[/bold yellow]"
+                )
+                return
+
+            table = Table(
+                title="[bold cyan]PRtoday Analysis History (API)[/bold cyan]",
+                show_header=True,
+                header_style="bold magenta",
+            )
+            table.add_column("Date", style="dim")
+            table.add_column("Repository")
+            table.add_column("PR #", justify="right")
+            table.add_column("Risk Score", justify="right")
+            table.add_column("Level")
+
+            for item in results:
+                level = item.get("risk_level", "UNKNOWN").upper()
+                if level == "LOW":
+                    style = "green"
+                elif level == "MEDIUM":
+                    style = "yellow"
+                else:
+                    style = "red"
+
+                table.add_row(
+                    item.get("created_at", "")[:16],
+                    item.get("repo", ""),
+                    f"#{item.get('pr_number', '?')}",
+                    f"[{style}]{item.get('risk_score', '?')}/100[/{style}]",
+                    f"[{style}]{level}[/{style}]",
+                )
+
+            console.print(table)
+        else:
+            console.print(
+                f"[bold red]API Error ({response.status_code}):[/bold red] {response.text}"
+            )
+            sys.exit(1)
+
+    except httpx.ConnectError:
+        console.print(
+            f"[bold red]Connection Error:[/bold red] Could not reach API at {api_url}."
+        )
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[bold red]API Error:[/bold red] {str(e)}")
         sys.exit(1)
 
 
