@@ -291,11 +291,3 @@ Here is an example of the terminal dashboard rendered when analyzing a PR:
 Here is an example of the analysis history table:
 
 ![Analysis History](docs/images/prhist.png)
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
