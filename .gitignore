@@ -24,8 +24,11 @@ debug_response.txt
 .DS_Store
 Thumbs.db
 
-# Workflow tracking (local-only, not committed)
-WORKFLOW.md
+# Markdown files (ignore all except README.md)
+*.md
+!README.md
 
 # Alembic migration cache
 pr_today/migrations/versions/__pycache__/
+
+.agent

@@ -42,8 +42,10 @@ class Dashboard:
             accent_color = "green"
         elif level == "MEDIUM":
             accent_color = "yellow"
-        else:
+        elif level == "HIGH":
             accent_color = "red"
+        else:
+            accent_color = "bold red"
 
         # Safe character encodings
         sym_dash = "—" if _can_encode("—") else "-"

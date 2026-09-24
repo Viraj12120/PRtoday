@@ -66,7 +66,7 @@ async def _get_cached_result(
 ) -> Optional[AnalyzeResponse]:
     """Attempt to retrieve a cached analysis result from Redis."""
     try:
-        from pr_today.api.main import get_redis
+        from pr_today.cache import get_redis
 
         redis_client = await get_redis()
         if redis_client is None:
@@ -88,7 +88,7 @@ async def _set_cached_result(
 ) -> None:
     """Store an analysis result in Redis with TTL."""
     try:
-        from pr_today.api.main import get_redis
+        from pr_today.cache import get_redis
 
         redis_client = await get_redis()
         if redis_client is None:
@@ -150,6 +150,7 @@ async def analyze_pr(
 
         async with get_session() as session:
             from sqlalchemy import update
+
             from pr_today.models import AnalysisResult
 
             await session.execute(
@@ -169,10 +170,26 @@ async def analyze_pr(
     # 4. Build response
     response = AnalyzeResponse(
         risk_score=result.risk_score,
+        risk_level=result.risk_level,
         blast_radius=result.blast_radius,
         files_changed=result.files_changed,
         ai_summary=result.ai_summary,
+        change_classification=getattr(result, "change_classification", None),
+        architectural_impact=getattr(result, "architectural_impact", None),
+        ai_failures=result.ai_failures or [],
+        ai_focus_areas=result.ai_focus_areas or [],
+        security_notes=getattr(result, "security_notes", None),
+        testing_gaps=getattr(result, "testing_gaps", None),
         security_findings=security_findings,
+        db_migrations_detected=result.db_migrations_detected,
+        config_changes_detected=result.config_changes_detected,
+        dependency_changes_detected=result.dependency_changes_detected,
+        ai_tokens_prompt=result.ai_tokens_prompt,
+        ai_tokens_completion=result.ai_tokens_completion,
+        ai_cost_usd=result.ai_cost_usd,
+        ai_latency_ms=result.ai_latency_ms,
+        ai_model_used=result.ai_model_used,
+        confidence_score=getattr(result, "confidence_score", 100),
     )
 
     # 5. Cache in Redis

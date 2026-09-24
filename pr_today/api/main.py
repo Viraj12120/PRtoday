@@ -12,39 +12,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pr_today.api.routes import analyze, health, history
+from pr_today.cache import close_cache, init_cache
 from pr_today.database import close_db, init_db
 
 logger = logging.getLogger("pr_today.api")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Redis connection (lazy, optional)
-# ──────────────────────────────────────────────────────────────────────────────
-_redis_client = None
-
-
-async def get_redis():
-    """Return the shared Redis client, or None if unavailable."""
-    global _redis_client
-    if _redis_client is None:
-        try:
-            from pr_today.config import settings
-
-            if settings.REDIS_URL:
-                import redis.asyncio as aioredis
-
-                _redis_client = aioredis.from_url(
-                    settings.REDIS_URL,
-                    decode_responses=True,
-                )
-                # Verify connectivity
-                await _redis_client.ping()
-                logger.info("Redis connected: %s", settings.REDIS_URL)
-        except Exception as e:
-            logger.warning("Redis unavailable: %s", e)
-            _redis_client = None
-    return _redis_client
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Application lifespan
@@ -56,14 +27,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage startup and shutdown of database and Redis."""
     logger.info("PR Today API starting up...")
     await init_db()
-    await get_redis()
+    await init_cache()
     yield
     # Shutdown
-    global _redis_client
-    if _redis_client is not None:
-        await _redis_client.aclose()
-        _redis_client = None
-        logger.info("Redis connection closed.")
+    await close_cache()
     await close_db()
     logger.info("PR Today API shut down.")
 
@@ -75,6 +42,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+    from pr_today.api.errors import setup_exception_handlers
+    from pr_today.config import settings
+
     application = FastAPI(
         title="PR Today",
         description="AI-assisted PR risk assessment API — wrapping the deterministic risk engine.",
@@ -82,14 +52,24 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS — allow all origins for development; tighten in production
+    setup_exception_handlers(application)
+
+    # CORS — controlled via config
+    origins = [orig.strip() for orig in settings.CORS_ORIGINS.split(",") if orig.strip()]
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add custom middlewares (order matters: applied from bottom up, so RequestId first, then RateLimit)
+    from pr_today.api.middleware.rate_limit import RateLimitMiddleware
+    from pr_today.api.middleware.request_id import RequestIdMiddleware
+
+    application.add_middleware(RateLimitMiddleware)
+    application.add_middleware(RequestIdMiddleware)
 
     # Register routers
     application.include_router(health.router, tags=["Health"])

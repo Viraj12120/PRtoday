@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -23,7 +23,7 @@ class AnalysisResult(Base):
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    repo: Mapped[str] = mapped_column(String, nullable=False)
+    repo: Mapped[str] = mapped_column(String, nullable=False, index=True)
     pr_number: Mapped[int] = mapped_column(Integer, nullable=False)
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)
     risk_level: Mapped[str] = mapped_column(String, nullable=False)
@@ -39,6 +39,12 @@ class AnalysisResult(Base):
     ai_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ai_failures: Mapped[List[str]] = mapped_column(JSON, nullable=False)
     ai_focus_areas: Mapped[List[str]] = mapped_column(JSON, nullable=False)
+    ai_tokens_prompt: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ai_tokens_completion: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ai_cost_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    ai_latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ai_model_used: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    confidence_score: Mapped[int] = mapped_column(Integer, default=100, nullable=False, server_default="100")
 
     # Security findings (derived from config/secret detection)
     security_findings: Mapped[List[str]] = mapped_column(
@@ -59,7 +65,7 @@ class AnalysisResult(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False, index=True
     )
 
     def __repr__(self) -> str:
@@ -78,7 +84,7 @@ class User(Base):
     )
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
     )
 
     def __repr__(self) -> str:

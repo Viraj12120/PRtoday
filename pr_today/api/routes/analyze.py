@@ -2,8 +2,10 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 
+from pr_today.api.errors import GitHubAuthError, PRNotFoundError, PRTodayAPIError
+from pr_today.api.middleware.auth import verify_api_key
 from pr_today.api.schemas import AnalyzeRequest, AnalyzeResponse
 from pr_today.services.risk_engine_service import analyze_pr
 
@@ -12,7 +14,7 @@ logger = logging.getLogger("pr_today.api.routes.analyze")
 router = APIRouter()
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
+@router.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key)])
 async def analyze_endpoint(request: AnalyzeRequest) -> AnalyzeResponse:
     """Analyze a pull request and return risk assessment.
 
@@ -34,11 +36,8 @@ async def analyze_endpoint(request: AnalyzeRequest) -> AnalyzeResponse:
         )
         return result
     except ValueError as ve:
-        raise HTTPException(status_code=422, detail=str(ve))
+        raise PRTodayAPIError(message=str(ve), status_code=422)
     except PermissionError as pe:
-        raise HTTPException(status_code=401, detail=str(pe))
-    except LookupError as le:
-        raise HTTPException(status_code=404, detail=str(le))
-    except Exception as e:
-        logger.error("Analysis failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise GitHubAuthError(message=str(pe))
+    except LookupError:
+        raise PRNotFoundError(repo=request.repo, pr_number=request.pr_number)

@@ -113,3 +113,21 @@ def test_dependency_change_increases_score():
 
     assert res_dep.score > res_base.score
     assert res_dep.breakdown["dependency_shifts"] == 100.0
+
+
+def test_is_config_file_precedence():
+    """Regression test for operator precedence bug in _is_config_file."""
+    engine = RiskEngine()
+    assert engine._is_config_file("some.yml") is True
+    assert engine._is_config_file("pyproject.toml") is False
+    assert engine._is_config_file(".env") is True
+    assert engine._is_config_file("app.py") is False
+
+
+def test_is_test_file_precedence():
+    """Regression test for operator precedence bug in _is_test_file."""
+    engine = RiskEngine()
+    assert engine._is_test_file("test_foo.py") is True
+    assert engine._is_test_file("foo.py") is False
+    assert engine._is_test_file("tests/something.py") is True
+    assert engine._is_test_file("foo_test.py") is True

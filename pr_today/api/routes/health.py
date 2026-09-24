@@ -30,7 +30,7 @@ async def health_endpoint() -> HealthResponse:
     # Check Redis connectivity
     redis_ok = False
     try:
-        from pr_today.api.main import get_redis
+        from pr_today.cache import get_redis
 
         redis_client = await get_redis()
         if redis_client is not None:

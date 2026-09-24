@@ -49,10 +49,12 @@ def _resolve_database_url() -> str:
 
 def _get_engine_kwargs(url: str) -> dict:
     """Return engine kwargs appropriate for the database driver."""
+    from pr_today.config import settings
+
     kwargs: dict = {"echo": False}
     if url.startswith("postgresql"):
-        kwargs["pool_size"] = 5
-        kwargs["max_overflow"] = 10
+        kwargs["pool_size"] = settings.DB_POOL_SIZE
+        kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
         kwargs["pool_pre_ping"] = True
     return kwargs
 
