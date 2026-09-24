@@ -55,7 +55,9 @@ def create_app() -> FastAPI:
     setup_exception_handlers(application)
 
     # CORS — controlled via config
-    origins = [orig.strip() for orig in settings.CORS_ORIGINS.split(",") if orig.strip()]
+    origins = [
+        orig.strip() for orig in settings.CORS_ORIGINS.split(",") if orig.strip()
+    ]
     application.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

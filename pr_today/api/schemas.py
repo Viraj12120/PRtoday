@@ -60,25 +60,31 @@ class AnalyzeResponse(BaseModel):
     ai_focus_areas: List[str] = Field(
         default_factory=list, description="AI-recommended reviewer focus areas."
     )
-    security_notes: Optional[str] = Field(
-        None, description="AI security observations."
-    )
-    testing_gaps: Optional[str] = Field(
-        None, description="AI-identified testing gaps."
-    )
+    security_notes: Optional[str] = Field(None, description="AI security observations.")
+    testing_gaps: Optional[str] = Field(None, description="AI-identified testing gaps.")
     security_findings: List[Any] = Field(
         default_factory=list,
         description="Deterministic security-related findings (secrets, config changes).",
     )
-    db_migrations_detected: bool = Field(False, description="Whether DB migrations were detected.")
-    config_changes_detected: bool = Field(False, description="Whether config changes were detected.")
-    dependency_changes_detected: bool = Field(False, description="Whether dependency changes were detected.")
+    db_migrations_detected: bool = Field(
+        False, description="Whether DB migrations were detected."
+    )
+    config_changes_detected: bool = Field(
+        False, description="Whether config changes were detected."
+    )
+    dependency_changes_detected: bool = Field(
+        False, description="Whether dependency changes were detected."
+    )
     ai_tokens_prompt: Optional[int] = Field(None, description="Prompt tokens used.")
-    ai_tokens_completion: Optional[int] = Field(None, description="Completion tokens used.")
+    ai_tokens_completion: Optional[int] = Field(
+        None, description="Completion tokens used."
+    )
     ai_cost_usd: Optional[float] = Field(None, description="Estimated AI cost in USD.")
     ai_latency_ms: Optional[int] = Field(None, description="AI response latency in ms.")
     ai_model_used: Optional[str] = Field(None, description="AI model identifier.")
-    confidence_score: int = Field(..., description="System confidence score in the AI review accuracy (0-100).")
+    confidence_score: int = Field(
+        ..., description="System confidence score in the AI review accuracy (0-100)."
+    )
 
 
 class HealthResponse(BaseModel):
@@ -109,4 +115,6 @@ class HistoryResponse(BaseModel):
 
     count: int
     results: List[HistoryItem]
-    next_cursor: Optional[int] = Field(None, description="Cursor for the next page of results.")
+    next_cursor: Optional[int] = Field(
+        None, description="Cursor for the next page of results."
+    )

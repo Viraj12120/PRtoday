@@ -3,6 +3,7 @@ from pr_today.dashboard import Dashboard
 from pr_today.models import AnalysisResult
 from datetime import datetime, timezone
 
+
 def test_dashboard_render_smoke():
     dashboard = Dashboard()
     result = AnalysisResult(
@@ -19,7 +20,7 @@ def test_dashboard_render_smoke():
         ai_focus_areas=["Check lines 10-20"],
         blast_radius=["test/repo"],
         missing_tests=["a.py"],
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
     # Just verify it doesn't crash
     dashboard.render(result, "testuser")

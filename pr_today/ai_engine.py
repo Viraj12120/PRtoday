@@ -43,7 +43,9 @@ class AIEngine:
     """Engine to perform AI-assisted reviews of code diffs using litellm."""
 
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(min=1, max=10))
-    async def _call_litellm_with_retry(self, model: str, system_prompt: str, user_prompt: str) -> litellm.ModelResponse:
+    async def _call_litellm_with_retry(
+        self, model: str, system_prompt: str, user_prompt: str
+    ) -> litellm.ModelResponse:
         return await litellm.acompletion(
             model=model,
             messages=[
@@ -54,7 +56,14 @@ class AIEngine:
             timeout=30,
         )
 
-    async def review(self, diff: str, risk_result: RiskResult, sast_findings: list = None, ast_context: str = None, ci_status: str = None) -> AIReview:
+    async def review(
+        self,
+        diff: str,
+        risk_result: RiskResult,
+        sast_findings: list = None,
+        ast_context: str = None,
+        ci_status: str = None,
+    ) -> AIReview:
         """Analyze a diff and risk metrics to generate structured code review feedback."""
         logger.debug("Calling litellm with model: %s", settings.AI_MODEL)
 
@@ -70,8 +79,16 @@ class AIEngine:
         truncated_diff = self._smart_truncate_diff(diff, max_chars)
 
         # Count diff stats for richer context
-        lines_added = sum(1 for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
-        lines_removed = sum(1 for line in diff.splitlines() if line.startswith("-") and not line.startswith("---"))
+        lines_added = sum(
+            1
+            for line in diff.splitlines()
+            if line.startswith("+") and not line.startswith("+++")
+        )
+        lines_removed = sum(
+            1
+            for line in diff.splitlines()
+            if line.startswith("-") and not line.startswith("---")
+        )
 
         system_prompt = SYSTEM_PROMPT_V2
         user_prompt = USER_PROMPT_TEMPLATE_V2.format(
@@ -82,16 +99,22 @@ class AIEngine:
             lines_added=lines_added,
             lines_removed=lines_removed,
             ci_status=ci_status or "CI status unavailable.",
-            sast_findings=json.dumps(sast_findings, indent=2) if sast_findings else "No SAST findings detected.",
+            sast_findings=(
+                json.dumps(sast_findings, indent=2)
+                if sast_findings
+                else "No SAST findings detected."
+            ),
             ast_context=ast_context or "AST context unavailable.",
-            truncated_diff=truncated_diff
+            truncated_diff=truncated_diff,
         )
 
         # Check cache first
         cache_key = None
         try:
             diff_hash = hashlib.sha256(truncated_diff.encode("utf-8")).hexdigest()
-            cache_key = f"pr_today:ai_cache:{PROMPT_VERSION}:{settings.AI_MODEL}:{diff_hash}"
+            cache_key = (
+                f"pr_today:ai_cache:{PROMPT_VERSION}:{settings.AI_MODEL}:{diff_hash}"
+            )
             redis_client = await cache.get_redis()
             if redis_client:
                 cached_res = await redis_client.get(cache_key)
@@ -114,14 +137,18 @@ class AIEngine:
             used_model = settings.AI_MODEL
             fallback_used = False
             try:
-                response = await self._call_litellm_with_retry(settings.AI_MODEL, system_prompt, user_prompt)
+                response = await self._call_litellm_with_retry(
+                    settings.AI_MODEL, system_prompt, user_prompt
+                )
             except Exception as e:
                 logger.warning("Primary model failed: %s", str(e))
                 if settings.AI_FALLBACK_MODEL:
                     logger.info("Trying fallback model: %s", settings.AI_FALLBACK_MODEL)
                     used_model = settings.AI_FALLBACK_MODEL
                     fallback_used = True
-                    response = await self._call_litellm_with_retry(settings.AI_FALLBACK_MODEL, system_prompt, user_prompt)
+                    response = await self._call_litellm_with_retry(
+                        settings.AI_FALLBACK_MODEL, system_prompt, user_prompt
+                    )
                 else:
                     raise
 
@@ -134,8 +161,15 @@ class AIEngine:
                 cost = litellm.completion_cost(completion_response=response)
                 if cost:
                     logger.debug("AI Request cost: $%.6f", cost)
-                    if settings.AI_MAX_COST_PER_REQUEST and cost > settings.AI_MAX_COST_PER_REQUEST:
-                        logger.warning("Cost exceeded max allowed limit: %s > %s", cost, settings.AI_MAX_COST_PER_REQUEST)
+                    if (
+                        settings.AI_MAX_COST_PER_REQUEST
+                        and cost > settings.AI_MAX_COST_PER_REQUEST
+                    ):
+                        logger.warning(
+                            "Cost exceeded max allowed limit: %s > %s",
+                            cost,
+                            settings.AI_MAX_COST_PER_REQUEST,
+                        )
             except Exception as e:
                 logger.debug("Could not calculate AI cost: %s", str(e))
 
@@ -144,15 +178,19 @@ class AIEngine:
             if hasattr(response, "usage") and response.usage:
                 tokens_prompt = response.usage.prompt_tokens
                 tokens_completion = response.usage.completion_tokens
-                logger.debug("Tokens - Prompt: %s, Completion: %s", tokens_prompt, tokens_completion)
+                logger.debug(
+                    "Tokens - Prompt: %s, Completion: %s",
+                    tokens_prompt,
+                    tokens_completion,
+                )
 
             latency_ms = int((time.monotonic() - start_time) * 1000)
-            
+
             # Calculate Confidence Score based on truncation, volume, and fallback
             confidence = 100
             if is_truncated:
                 excess = len(diff) - max_chars
-                penalty = min(30, int((excess / 1000) * 5)) # Up to 30% penalty
+                penalty = min(30, int((excess / 1000) * 5))  # Up to 30% penalty
                 confidence -= penalty
             if lines_added + lines_removed > 1000:
                 penalty = min(20, int(((lines_added + lines_removed - 1000) / 100) * 2))
@@ -174,7 +212,11 @@ class AIEngine:
                 try:
                     redis_client = await cache.get_redis()
                     if redis_client:
-                        await redis_client.setex(cache_key, settings.AI_CACHE_TTL_SECONDS, review_obj.model_dump_json())
+                        await redis_client.setex(
+                            cache_key,
+                            settings.AI_CACHE_TTL_SECONDS,
+                            review_obj.model_dump_json(),
+                        )
                 except Exception as e:
                     logger.warning("Failed to write to cache: %s", str(e))
 
@@ -187,7 +229,7 @@ class AIEngine:
                     error_msg = str(e.last_attempt.exception().__class__.__name__)
                 except:
                     pass
-                
+
             logger.error("AI review failed after retries: %s", error_msg)
             return AIReview(
                 summary=f"AI review temporarily unavailable (degraded state: {error_msg}).",
@@ -198,59 +240,73 @@ class AIEngine:
                     "Inspect diff manually for edge cases and correctness."
                 ],
                 ai_latency_ms=int((time.monotonic() - start_time) * 1000),
-                confidence_score=0
+                confidence_score=0,
             )
 
     def _smart_truncate_diff(self, diff: str, max_chars: int) -> str:
         """Intelligently truncate a diff by prioritizing high-risk files."""
         if len(diff) <= max_chars:
             return diff
-            
+
         # Split the diff into file blocks
-        blocks = re.split(r'(^diff --git )', diff, flags=re.MULTILINE)
-        
+        blocks = re.split(r"(^diff --git )", diff, flags=re.MULTILINE)
+
         if len(blocks) < 3:
             return diff[:max_chars]
-            
+
         file_chunks = []
-        
+
         # Iterate through blocks in pairs of (delimiter, content)
         for i in range(1, len(blocks), 2):
-            chunk = blocks[i] + blocks[i+1]
-            
+            chunk = blocks[i] + blocks[i + 1]
+
             # Determine filename to score it
             filename = ""
-            match = re.search(r'^a/(.*?)\s+b/', blocks[i+1])
+            match = re.search(r"^a/(.*?)\s+b/", blocks[i + 1])
             if match:
                 filename = match.group(1)
-                
+
             # Score chunk
             score = 0
             filename_lower = filename.lower()
             if "migration" in filename_lower or "alembic" in filename_lower:
                 score = 100
-            elif ".env" in filename_lower or "settings" in filename_lower or filename_lower.endswith((".yml", ".yaml", ".toml")):
+            elif (
+                ".env" in filename_lower
+                or "settings" in filename_lower
+                or filename_lower.endswith((".yml", ".yaml", ".toml"))
+            ):
                 score = 90
-            elif filename_lower in ("requirements.txt", "pyproject.toml", "package.json", "go.mod"):
+            elif filename_lower in (
+                "requirements.txt",
+                "pyproject.toml",
+                "package.json",
+                "go.mod",
+            ):
                 score = 80
-            elif filename_lower.endswith((".py", ".js", ".ts", ".go", ".java", ".rs", ".cpp", ".c")):
+            elif filename_lower.endswith(
+                (".py", ".js", ".ts", ".go", ".java", ".rs", ".cpp", ".c")
+            ):
                 score = 50
             else:
                 score = 10
-                
+
             file_chunks.append((score, chunk))
-            
+
         # Sort chunks by score descending
         file_chunks.sort(key=lambda x: x[0], reverse=True)
-        
-        truncated = blocks[0] # Add prefix if any (usually empty)
+
+        truncated = blocks[0]  # Add prefix if any (usually empty)
         for score, chunk in file_chunks:
             if len(truncated) + len(chunk) <= max_chars:
                 truncated += chunk
             else:
                 remaining = max_chars - len(truncated)
                 if remaining > 500:
-                    truncated += chunk[:remaining] + "\n...[DIFF TRUNCATED DUE TO TOKEN LIMITS]..."
+                    truncated += (
+                        chunk[:remaining]
+                        + "\n...[DIFF TRUNCATED DUE TO TOKEN LIMITS]..."
+                    )
                 break
-                
+
         return truncated

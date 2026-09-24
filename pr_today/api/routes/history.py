@@ -16,11 +16,15 @@ logger = logging.getLogger("pr_today.api.routes.history")
 router = APIRouter()
 
 
-@router.get("/history", response_model=HistoryResponse, dependencies=[Depends(verify_api_key)])
+@router.get(
+    "/history", response_model=HistoryResponse, dependencies=[Depends(verify_api_key)]
+)
 async def history_endpoint(
     repo: Optional[str] = Query(None, description="Filter by repository (owner/name)."),
     limit: int = Query(20, ge=1, le=100, description="Max results to return."),
-    cursor: Optional[int] = Query(None, description="Cursor for pagination (last seen ID)."),
+    cursor: Optional[int] = Query(
+        None, description="Cursor for pagination (last seen ID)."
+    ),
 ) -> HistoryResponse:
     """Retrieve historical PR analysis results, optionally filtered by repo."""
     logger.info("History request: repo=%s limit=%d cursor=%s", repo, limit, cursor)
