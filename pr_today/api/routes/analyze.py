@@ -14,7 +14,9 @@ logger = logging.getLogger("pr_today.api.routes.analyze")
 router = APIRouter()
 
 
-@router.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key)])
+@router.post(
+    "/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key)]
+)
 async def analyze_endpoint(request: AnalyzeRequest) -> AnalyzeResponse:
     """Analyze a pull request and return risk assessment.
 

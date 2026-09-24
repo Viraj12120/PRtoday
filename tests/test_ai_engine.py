@@ -38,7 +38,11 @@ async def test_ai_engine_success(dummy_risk_result):
     mock_response = MagicMock()
     mock_response.choices = [mock_choices]
 
-    with patch("pr_today.ai_engine.AIEngine._call_litellm_with_retry", new_callable=AsyncMock, return_value=mock_response) as mock_completion:
+    with patch(
+        "pr_today.ai_engine.AIEngine._call_litellm_with_retry",
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ) as mock_completion:
         review = await engine.review("diff_content", dummy_risk_result)
 
         assert isinstance(review, AIReview)
@@ -54,7 +58,9 @@ async def test_ai_engine_graceful_degradation_on_timeout(dummy_risk_result):
     engine = AIEngine()
 
     with patch(
-        "pr_today.ai_engine.AIEngine._call_litellm_with_retry", new_callable=AsyncMock, side_effect=Exception("Timeout error")
+        "pr_today.ai_engine.AIEngine._call_litellm_with_retry",
+        new_callable=AsyncMock,
+        side_effect=Exception("Timeout error"),
     ) as mock_completion:
         review = await engine.review("diff_content", dummy_risk_result)
 
@@ -76,7 +82,11 @@ async def test_ai_engine_prompt_integrity(dummy_risk_result):
     mock_response = MagicMock()
     mock_response.choices = [mock_choices]
 
-    with patch("pr_today.ai_engine.AIEngine._call_litellm_with_retry", new_callable=AsyncMock, return_value=mock_response) as mock_completion:
+    with patch(
+        "pr_today.ai_engine.AIEngine._call_litellm_with_retry",
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ) as mock_completion:
         await engine.review("diff_content", dummy_risk_result)
 
         args, kwargs = mock_completion.call_args
@@ -84,5 +94,3 @@ async def test_ai_engine_prompt_integrity(dummy_risk_result):
         system_msg = args[1] if len(args) > 1 else kwargs.get("system_prompt", "")
 
         assert "reviewer" in system_msg
-
-

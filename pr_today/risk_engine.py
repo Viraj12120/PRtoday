@@ -116,13 +116,21 @@ class RiskEngine:
             total_criticality += multiplier
 
         if pr_diff:
-            added_lines = sum(1 for line in pr_diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
-            removed_lines = sum(1 for line in pr_diff.splitlines() if line.startswith("-") and not line.startswith("---"))
+            added_lines = sum(
+                1
+                for line in pr_diff.splitlines()
+                if line.startswith("+") and not line.startswith("+++")
+            )
+            removed_lines = sum(
+                1
+                for line in pr_diff.splitlines()
+                if line.startswith("-") and not line.startswith("---")
+            )
             total_lines = added_lines + removed_lines
             # Every 50 lines changed historically added 1.0; let's use a log scale instead
             # to gracefully handle huge PRs. log10(500) ~ 2.6, log10(5000) ~ 3.6
             if total_lines > 0:
-                total_criticality += (math.log10(total_lines) * 2.0)
+                total_criticality += math.log10(total_lines) * 2.0
 
         # Map to 0-100 scale gracefully. A total criticality of 20 ~ 100 score.
         score = min(total_criticality * 5.0, 100.0)
@@ -144,9 +152,11 @@ class RiskEngine:
         ]
         # Extract only added or removed lines (ignore context)
         changed_lines = [
-            line for line in pr_diff.splitlines() 
-            if (line.startswith("+") or line.startswith("-")) 
-            and not line.startswith("+++") and not line.startswith("---")
+            line
+            for line in pr_diff.splitlines()
+            if (line.startswith("+") or line.startswith("-"))
+            and not line.startswith("+++")
+            and not line.startswith("---")
         ]
 
         for pattern in db_patterns:
@@ -173,9 +183,11 @@ class RiskEngine:
         ]
         # Extract only added or removed lines
         changed_lines = [
-            line for line in pr_diff.splitlines() 
-            if (line.startswith("+") or line.startswith("-")) 
-            and not line.startswith("+++") and not line.startswith("---")
+            line
+            for line in pr_diff.splitlines()
+            if (line.startswith("+") or line.startswith("-"))
+            and not line.startswith("+++")
+            and not line.startswith("---")
         ]
 
         for pattern in secret_patterns:
@@ -213,7 +225,7 @@ class RiskEngine:
         """Check if the PR modifies source files without containing ANY tests."""
         # Does the PR contain any test file modifications?
         pr_has_tests = any(self._is_test_file(f) for f in files)
-        
+
         missing = []
         if not pr_has_tests:
             # If no tests were included in the PR, flag all modified source files

@@ -12,6 +12,7 @@ from pr_today.cache import get_redis
 RATE_LIMIT_REQUESTS = 60
 RATE_LIMIT_WINDOW_SECONDS = 60
 
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limits requests based on client IP using Redis."""
 

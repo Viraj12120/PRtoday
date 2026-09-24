@@ -8,6 +8,7 @@ logger = logging.getLogger("pr_today.cache")
 
 _redis_client = None
 
+
 async def init_cache() -> None:
     """Initialize the Redis connection pool if configured."""
     global _redis_client
@@ -26,9 +27,11 @@ async def init_cache() -> None:
             logger.warning("Redis unavailable: %s", e)
             _redis_client = None
 
+
 async def get_redis():
     """Return the shared Redis client, or None if unavailable."""
     return _redis_client
+
 
 async def close_cache() -> None:
     """Close the Redis connection pool."""

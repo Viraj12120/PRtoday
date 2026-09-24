@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
+
 class AstEngine:
     def __init__(self, repo_path: str, diff_content: str):
         self.repo_path = repo_path
@@ -21,7 +22,7 @@ class AstEngine:
             # This is a naive regex for MVP: matches def func_name( or class ClassName(
             # Also works for JS/TS: function funcName( or const funcName =
             modified_symbols = set()
-            
+
             # Simple pattern to catch common definition names in diff additions/removals
             patterns = [
                 r"^\+.*def\s+([a-zA-Z0-9_]+)\s*\(",
@@ -30,9 +31,9 @@ class AstEngine:
                 r"^\+.*const\s+([a-zA-Z0-9_]+)\s*=\s*(?:\([^)]*\)|[a-zA-Z0-9_]+)\s*=>",
                 r"^\+.*func\s+([a-zA-Z0-9_]+)\s*\(",  # Go
             ]
-            
+
             for line in self.diff_content.splitlines():
-                if not line.startswith('+') and not line.startswith('-'):
+                if not line.startswith("+") and not line.startswith("-"):
                     continue
                 for p in patterns:
                     match = re.search(p, line)
@@ -49,23 +50,27 @@ class AstEngine:
             for symbol in modified_symbols:
                 # Basic ripgrep or grep equivalent. Python's subprocess grep is easiest
                 cmd = ["grep", "-rn", "-m", "10", f"\\b{symbol}\\b", "."]
-                result = subprocess.run(cmd, cwd=self.repo_path, capture_output=True, text=True)
-                
+                result = subprocess.run(
+                    cmd, cwd=self.repo_path, capture_output=True, text=True
+                )
+
                 if result.stdout:
                     # Parse grep output to count usages and show samples
-                    lines = result.stdout.strip().split('\n')
-                    files_touching = len(set([line.split(':')[0] for line in lines if ':' in line]))
-                    
+                    lines = result.stdout.strip().split("\n")
+                    files_touching = len(
+                        set([line.split(":")[0] for line in lines if ":" in line])
+                    )
+
                     context_results.append(
                         f"Symbol '{symbol}' is referenced in {files_touching}+ files across the repo. "
                         f"Sample usages:\n" + "\n".join(lines[:3])
                     )
-            
+
             if not context_results:
                 return "Modified symbols have no internal callers detected."
-                
+
             return "\n\n".join(context_results)
-            
+
         except Exception as e:
             logger.error("AST Engine failed: %s", e)
             return "Failed to extract caller context."

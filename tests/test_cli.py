@@ -128,6 +128,3 @@ def test_cli_missing_github_pat_validation():
         assert result.exit_code == 1
         assert "Error:" in result.output
         assert "GITHUB_PAT is not set" in result.output
-
-
-

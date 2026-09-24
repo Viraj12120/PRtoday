@@ -66,10 +66,18 @@ class Orchestrator:
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     repo_url = f"https://github.com/{repo}.git"
-                    logger.info("Cloning %s into %s for local engine analysis...", repo_url, tmpdir)
+                    logger.info(
+                        "Cloning %s into %s for local engine analysis...",
+                        repo_url,
+                        tmpdir,
+                    )
                     # Use shallow clone to avoid downloading GBs of history for large repos
-                    repo_obj = git.Repo.clone_from(repo_url, tmpdir, no_checkout=True, depth=1)
-                    repo_obj.remotes.origin.fetch(f"pull/{pr_number}/head:pr_branch", depth=1)
+                    repo_obj = git.Repo.clone_from(
+                        repo_url, tmpdir, no_checkout=True, depth=1
+                    )
+                    repo_obj.remotes.origin.fetch(
+                        f"pull/{pr_number}/head:pr_branch", depth=1
+                    )
                     repo_obj.git.checkout("pr_branch")
 
                     # Phase 2: Run SAST engine (Semgrep)
@@ -97,11 +105,11 @@ class Orchestrator:
             logger.info("Running AI review engine...")
             # We now pass CI Status (Phase 3), SAST (Phase 2) and AST (Phase 4) findings!
             ai_result = await self.ai_engine.review(
-                diff_content, 
-                risk_result, 
-                sast_findings=sast_findings, 
+                diff_content,
+                risk_result,
+                sast_findings=sast_findings,
                 ast_context=ast_context,
-                ci_status=pr_metadata.get("ci_status")
+                ci_status=pr_metadata.get("ci_status"),
             )
 
         # 5. Save to local SQLite database
@@ -137,8 +145,12 @@ class Orchestrator:
             await session.refresh(result_model)
 
         # Attach V2 AI fields as transient attributes (not persisted to DB)
-        result_model.change_classification = getattr(ai_result, "change_classification", None)
-        result_model.architectural_impact = getattr(ai_result, "architectural_impact", None)
+        result_model.change_classification = getattr(
+            ai_result, "change_classification", None
+        )
+        result_model.architectural_impact = getattr(
+            ai_result, "architectural_impact", None
+        )
         result_model.security_notes = getattr(ai_result, "security_notes", None)
         result_model.testing_gaps = getattr(ai_result, "testing_gaps", None)
 
@@ -164,18 +176,22 @@ class Orchestrator:
                     "author": pr_obj.user.login,
                     "files": changed_files,
                 }
-                
+
                 try:
                     commit = repo_obj.get_commit(pr_obj.head.sha)
                     check_runs = commit.get_check_runs()
                     ci_status = []
                     for run in check_runs:
-                        ci_status.append(f"- {run.name}: {run.conclusion or run.status}")
-                    pr_metadata["ci_status"] = "\n".join(ci_status) if ci_status else "No CI runs found."
+                        ci_status.append(
+                            f"- {run.name}: {run.conclusion or run.status}"
+                        )
+                    pr_metadata["ci_status"] = (
+                        "\n".join(ci_status) if ci_status else "No CI runs found."
+                    )
                 except Exception as e:
                     logger.warning("Failed to fetch CI status: %s", e)
                     pr_metadata["ci_status"] = "CI status unavailable."
-                    
+
                 break
             except RateLimitExceededException:
                 if retries > 0:

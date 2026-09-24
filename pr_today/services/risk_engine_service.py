@@ -61,9 +61,7 @@ def _extract_security_findings(
     return findings
 
 
-async def _get_cached_result(
-    repo: str, pr_number: int
-) -> Optional[AnalyzeResponse]:
+async def _get_cached_result(repo: str, pr_number: int) -> Optional[AnalyzeResponse]:
     """Attempt to retrieve a cached analysis result from Redis."""
     try:
         from pr_today.cache import get_redis
@@ -96,7 +94,9 @@ async def _set_cached_result(
 
         key = _cache_key(repo, pr_number)
         await redis_client.setex(key, CACHE_TTL_SECONDS, response.model_dump_json())
-        logger.info("Cached result for %s PR #%d (TTL=%ds)", repo, pr_number, CACHE_TTL_SECONDS)
+        logger.info(
+            "Cached result for %s PR #%d (TTL=%ds)", repo, pr_number, CACHE_TTL_SECONDS
+        )
     except Exception as e:
         logger.warning("Redis cache write failed: %s", e)
 

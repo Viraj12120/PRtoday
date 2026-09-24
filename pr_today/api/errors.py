@@ -10,7 +10,10 @@ logger = logging.getLogger("pr_today.api.errors")
 
 class PRTodayAPIError(Exception):
     """Base class for all custom API exceptions."""
-    def __init__(self, message: str, status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR):
+
+    def __init__(
+        self, message: str, status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+    ):
         self.message = message
         self.status_code = status_code
         super().__init__(self.message)
@@ -31,7 +34,9 @@ class GitHubAuthError(PRTodayAPIError):
 
 class PRTooLargeError(PRTodayAPIError):
     def __init__(self, message: str = "Pull request diff is too large to analyze."):
-        super().__init__(message=message, status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+        super().__init__(
+            message=message, status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        )
 
 
 def setup_exception_handlers(app: FastAPI) -> None:

@@ -44,7 +44,9 @@ class AnalysisResult(Base):
     ai_cost_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     ai_latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     ai_model_used: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    confidence_score: Mapped[int] = mapped_column(Integer, default=100, nullable=False, server_default="100")
+    confidence_score: Mapped[int] = mapped_column(
+        Integer, default=100, nullable=False, server_default="100"
+    )
 
     # Security findings (derived from config/secret detection)
     security_findings: Mapped[List[str]] = mapped_column(
@@ -65,7 +67,10 @@ class AnalysisResult(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False, index=True
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False,
+        index=True,
     )
 
     def __repr__(self) -> str:
@@ -84,7 +89,9 @@ class User(Base):
     )
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False,
     )
 
     def __repr__(self) -> str:

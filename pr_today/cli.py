@@ -183,27 +183,30 @@ def _analyze_via_api(api_url: str, repo: str, pr: int) -> None:
             transient=True,
         ) as progress:
             task = progress.add_task("[cyan]Initializing Request...", total=None)
-            
+
             with ThreadPoolExecutor() as executor:
                 future = executor.submit(make_request)
-                
+
                 stages = [
                     (0, "[cyan]Fetching PR metadata from GitHub..."),
                     (2, "[blue]Running Deterministic Risk Engine..."),
                     (4, "[magenta]Streaming AI Code Review Analysis..."),
-                    (10, "[green]Persisting results to database...")
+                    (10, "[green]Persisting results to database..."),
                 ]
-                
+
                 start_time = time.time()
                 current_stage = -1
-                
+
                 while not future.done():
                     elapsed = time.time() - start_time
-                    if current_stage < len(stages) - 1 and elapsed >= stages[current_stage + 1][0]:
+                    if (
+                        current_stage < len(stages) - 1
+                        and elapsed >= stages[current_stage + 1][0]
+                    ):
                         current_stage += 1
                         progress.update(task, description=stages[current_stage][1])
                     time.sleep(0.1)
-                
+
                 response = future.result()
 
         if response.status_code == 200:
@@ -239,7 +242,12 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
     classification = data.get("change_classification", "UNKNOWN")
 
     # Color mapping
-    color_map = {"LOW": "green", "MEDIUM": "yellow", "HIGH": "red", "CRITICAL": "bold red"}
+    color_map = {
+        "LOW": "green",
+        "MEDIUM": "yellow",
+        "HIGH": "red",
+        "CRITICAL": "bold red",
+    }
     accent = color_map.get(level, "white")
 
     # ── 1. Header ─────────────────────────────────────────────────────
@@ -263,7 +271,9 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
 
     confidence = data.get("confidence_score", 100)
     conf_filled = int(confidence / 100 * 20)
-    conf_color = "green" if confidence >= 90 else ("yellow" if confidence >= 70 else "red")
+    conf_color = (
+        "green" if confidence >= 90 else ("yellow" if confidence >= 70 else "red")
+    )
     conf_bar = f"[{conf_color}]{'█' * conf_filled}[/{conf_color}][dim]{'░' * (20 - conf_filled)}[/dim]"
     score_text.append(f"  Confidence: {confidence}% {conf_bar}\n", style="dim white")
 
@@ -274,18 +284,32 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
     details_table.add_column("Label", style="bold white", min_width=18)
     details_table.add_column("Value", style="cyan")
     details_table.add_row("Files Changed", str(len(files_changed)))
-    details_table.add_row("Blast Radius", ", ".join(blast_radius) if blast_radius else "None")
+    details_table.add_row(
+        "Blast Radius", ", ".join(blast_radius) if blast_radius else "None"
+    )
     details_table.add_row(
         "DB Migrations",
-        "[red]DETECTED[/red]" if data.get("db_migrations_detected") else "[green]None[/green]",
+        (
+            "[red]DETECTED[/red]"
+            if data.get("db_migrations_detected")
+            else "[green]None[/green]"
+        ),
     )
     details_table.add_row(
         "Config Changes",
-        "[red]DETECTED[/red]" if data.get("config_changes_detected") else "[green]None[/green]",
+        (
+            "[red]DETECTED[/red]"
+            if data.get("config_changes_detected")
+            else "[green]None[/green]"
+        ),
     )
     details_table.add_row(
         "Dependency Changes",
-        "[yellow]DETECTED[/yellow]" if data.get("dependency_changes_detected") else "[green]None[/green]",
+        (
+            "[yellow]DETECTED[/yellow]"
+            if data.get("dependency_changes_detected")
+            else "[green]None[/green]"
+        ),
     )
 
     score_grid = Table.grid(expand=True, padding=1)
@@ -295,7 +319,14 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
         Panel(f"  {bar}\n{score_text.plain}", border_style=accent),
         details_table,
     )
-    console.print(Panel(score_grid, title="[bold]Risk Assessment[/bold]", border_style=accent, padding=(1, 2)))
+    console.print(
+        Panel(
+            score_grid,
+            title="[bold]Risk Assessment[/bold]",
+            border_style=accent,
+            padding=(1, 2),
+        )
+    )
 
     # ── 3. AI Summary ─────────────────────────────────────────────────
     summary = data.get("ai_summary") or "AI review not available."
@@ -323,7 +354,9 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
     # ── 5. Failure Scenarios ──────────────────────────────────────────
     failures = data.get("ai_failures", [])
     if failures:
-        fail_md = "\n\n".join(f"{i}. {scenario}" for i, scenario in enumerate(failures, 1))
+        fail_md = "\n\n".join(
+            f"{i}. {scenario}" for i, scenario in enumerate(failures, 1)
+        )
         console.print(
             Panel(
                 Markdown(fail_md),
@@ -350,8 +383,11 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
     sast = data.get("security_findings", [])
     if sast:
         sast_md = "\n".join(
-            f"- **{f.get('rule_id', 'Vulnerability')}** in `{f.get('file', 'Unknown')}:{f.get('line', '?')}` ({f.get('severity', 'WARNING')})\n  {f.get('message', '')}"
-            if isinstance(f, dict) else f"- {f}"
+            (
+                f"- **{f.get('rule_id', 'Vulnerability')}** in `{f.get('file', 'Unknown')}:{f.get('line', '?')}` ({f.get('severity', 'WARNING')})\n  {f.get('message', '')}"
+                if isinstance(f, dict)
+                else f"- {f}"
+            )
             for f in sast
         )
         console.print(
@@ -418,20 +454,30 @@ def _render_rich_dashboard(data: dict, repo: str, pr: int) -> None:
     legend_text = Text()
     legend_text.append("Legend:\n", style="bold white")
     legend_text.append(" • Blast Radius: ", style="bold cyan")
-    legend_text.append("How widely the code changes affect the rest of the project.\n", style="dim")
+    legend_text.append(
+        "How widely the code changes affect the rest of the project.\n", style="dim"
+    )
     legend_text.append(" • Config Changes: ", style="bold cyan")
-    legend_text.append("Changes to settings or environment files that might break deployments.\n", style="dim")
+    legend_text.append(
+        "Changes to settings or environment files that might break deployments.\n",
+        style="dim",
+    )
     legend_text.append(" • SAST Findings: ", style="bold cyan")
-    legend_text.append("Security risks and vulnerabilities found in the code.\n", style="dim")
+    legend_text.append(
+        "Security risks and vulnerabilities found in the code.\n", style="dim"
+    )
     legend_text.append(" • Confidence: ", style="bold cyan")
-    legend_text.append("How sure the AI is about its review (lower if the PR is too large or complex).", style="dim")
-    
+    legend_text.append(
+        "How sure the AI is about its review (lower if the PR is too large or complex).",
+        style="dim",
+    )
+
     legend_panel = Panel(
         legend_text,
         title="Terminology",
         title_align="center",
         border_style="dim white",
-        padding=(0, 2)
+        padding=(0, 2),
     )
     console.print(legend_panel)
 
@@ -540,9 +586,7 @@ def _history_via_api(api_url: str, limit: int) -> None:
             results = data.get("results", [])
 
             if not results:
-                console.print(
-                    "[bold yellow]No PR risk history found.[/bold yellow]"
-                )
+                console.print("[bold yellow]No PR risk history found.[/bold yellow]")
                 return
 
             table = Table(
