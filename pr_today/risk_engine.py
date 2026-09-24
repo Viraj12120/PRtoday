@@ -1,5 +1,6 @@
 """Deterministic risk scoring engine for PRtoday."""
 
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +32,7 @@ class RiskEngine:
             A RiskResult containing score, level, breakdown, blast radius, and missing tests.
         """
         # 1. Volume & Criticality (30% weight)
-        score_vol = self._calculate_volume_score(files)
+        score_vol = self._calculate_volume_score(files, pr_diff)
 
         # 2. DB Migration Detection (30% weight)
         score_db = self._detect_db_migrations(pr_diff, files)
@@ -51,13 +52,15 @@ class RiskEngine:
         # Ensure score is within 0-100 range
         score = max(0, min(100, score))
 
-        # Determine level based on thresholds: LOW 0-33, MEDIUM 34-66, HIGH 67-100
+        # Determine level based on thresholds: LOW 0-33, MEDIUM 34-66, HIGH 67-89, CRITICAL 90-100
         if score <= 33:
             level = "LOW"
         elif score <= 66:
             level = "MEDIUM"
-        else:
+        elif score <= 89:
             level = "HIGH"
+        else:
+            level = "CRITICAL"
 
         # Calculate blast radius: map changed files to their parent package/module
         blast_radius = self._calculate_blast_radius(files)
@@ -80,9 +83,9 @@ class RiskEngine:
             missing_tests=missing_tests,
         )
 
-    def _calculate_volume_score(self, files: List[str]) -> float:
+    def _calculate_volume_score(self, files: List[str], pr_diff: str = "") -> float:
         """Calculate score based on volume and criticality of changed files."""
-        if not files:
+        if not files and not pr_diff:
             return 0.0
 
         total_criticality = 0.0
@@ -112,9 +115,18 @@ class RiskEngine:
                 multiplier = 0.5
             total_criticality += multiplier
 
-        # Map to 0-100 scale: e.g. total criticality of 10 matches 100 score
-        # Let's use: score = min(total_criticality * 10, 100)
-        return min(total_criticality * 10.0, 100.0)
+        if pr_diff:
+            added_lines = sum(1 for line in pr_diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
+            removed_lines = sum(1 for line in pr_diff.splitlines() if line.startswith("-") and not line.startswith("---"))
+            total_lines = added_lines + removed_lines
+            # Every 50 lines changed historically added 1.0; let's use a log scale instead
+            # to gracefully handle huge PRs. log10(500) ~ 2.6, log10(5000) ~ 3.6
+            if total_lines > 0:
+                total_criticality += (math.log10(total_lines) * 2.0)
+
+        # Map to 0-100 scale gracefully. A total criticality of 20 ~ 100 score.
+        score = min(total_criticality * 5.0, 100.0)
+        return score
 
     def _detect_db_migrations(self, pr_diff: str, files: List[str]) -> float:
         """Detect database migrations in files or diff content."""
@@ -130,9 +142,21 @@ class RiskEngine:
             r"(?i)\bDROP\s+TABLE\b",
             r"(?i)\bADD\s+COLUMN\b",
         ]
+        # Extract only added or removed lines (ignore context)
+        changed_lines = [
+            line for line in pr_diff.splitlines() 
+            if (line.startswith("+") or line.startswith("-")) 
+            and not line.startswith("+++") and not line.startswith("---")
+        ]
+
         for pattern in db_patterns:
-            if re.search(pattern, pr_diff):
-                return 100.0
+            for line in changed_lines:
+                # Ignore comments to prevent false positives
+                clean_line = line[1:].strip()
+                if clean_line.startswith(("#", "//", "*", "/*", "--", "<!--")):
+                    continue
+                if re.search(pattern, clean_line):
+                    return 100.0
 
         return 0.0
 
@@ -145,15 +169,22 @@ class RiskEngine:
 
         # Check diff for secrets or key patterns
         secret_patterns = [
-            r"(?i)api[-_]?key",
-            r"(?i)secret[-_]?key",
-            r"(?i)password",
-            r"(?i)token",
-            r"(?i)auth[-_]?token",
+            r"(?i)(password|api[-_]?key|secret[-_]?key|token|auth[-_]?token)\s*[:=]\s*['\"].+['\"]"
         ]
+        # Extract only added or removed lines
+        changed_lines = [
+            line for line in pr_diff.splitlines() 
+            if (line.startswith("+") or line.startswith("-")) 
+            and not line.startswith("+++") and not line.startswith("---")
+        ]
+
         for pattern in secret_patterns:
-            if re.search(pattern, pr_diff):
-                return 100.0
+            for line in changed_lines:
+                clean_line = line[1:].strip()
+                if clean_line.startswith(("#", "//", "*", "/*", "--", "<!--")):
+                    continue
+                if re.search(pattern, clean_line):
+                    return 100.0
 
         return 0.0
 
@@ -179,38 +210,22 @@ class RiskEngine:
         return sorted(list(modules))
 
     def _detect_missing_tests(self, files: List[str]) -> List[str]:
-        """Check if changed source files have corresponding test files."""
+        """Check if the PR modifies source files without containing ANY tests."""
+        # Does the PR contain any test file modifications?
+        pr_has_tests = any(self._is_test_file(f) for f in files)
+        
         missing = []
-        for f in files:
-            path = Path(f)
-            # Only check source files (e.g. .py), skip tests, migrations, config, dependency files
-            if (
-                path.suffix == ".py"
-                and not self._is_test_file(f)
-                and not self._is_migration_file(f)
-                and not self._is_config_file(f)
-                and not self._is_dependency_file(f)
-            ):
-                # E.g. pr_today/risk_engine.py -> tests/test_risk_engine.py
-                # or tests/pr_today/test_risk_engine.py
-                parts = list(path.parts)
-                if parts:
-                    filename = parts[-1]
-                    test_filename = f"test_{filename}"
-
-                    # Formulate expected test path: replace first component with 'tests'
-                    # and prefix filename with 'test_'
-                    expected_test_path = Path("tests") / test_filename
-                    expected_nested_test_path = (
-                        Path("tests") / Path(*parts[:-1]) / test_filename
-                    )
-
-                    # Check if test file is in files list or exists on disk
-                    if not (
-                        expected_test_path.exists()
-                        or expected_nested_test_path.exists()
-                    ):
-                        missing.append(f)
+        if not pr_has_tests:
+            # If no tests were included in the PR, flag all modified source files
+            for f in files:
+                path = Path(f)
+                if (
+                    path.suffix in (".py", ".js", ".ts", ".go", ".java", ".cpp", ".rs")
+                    and not self._is_migration_file(f)
+                    and not self._is_config_file(f)
+                    and not self._is_dependency_file(f)
+                ):
+                    missing.append(f)
         return missing
 
     def _is_migration_file(self, filename: str) -> bool:
@@ -228,9 +243,10 @@ class RiskEngine:
         return (
             path.name == ".env"
             or "settings.py" in filename
-            or path.suffix in (".yml", ".yaml", ".toml")
-            # But exclude pyproject.toml as it is handled by dependencies
-            and path.name != "pyproject.toml"
+            or (
+                path.suffix in (".yml", ".yaml", ".toml")
+                and path.name != "pyproject.toml"
+            )
         )
 
     def _is_dependency_file(self, filename: str) -> bool:
@@ -243,9 +259,8 @@ class RiskEngine:
         path = Path(filename)
         return (
             path.name.lower().startswith("test_")
-            or path.name.lower().endswith("_test")
-            or path.suffix == ".py"
-            and path.name.lower().startswith("test")
+            or path.stem.lower().endswith("_test")
+            or (path.suffix == ".py" and path.name.lower().startswith("test"))
             or "tests" in path.parts
             or "test" in path.parts
         )
